@@ -41,7 +41,7 @@ export class ObstacleManager {
     // Materials
     this._bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x6B4423 });
     this._bodyMaterial.side = THREE.FrontSide;
-    this._eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    this._eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
     this._eyeMaterial.side = THREE.FrontSide;
 
     // Optimized geometries (reduced polygons for mobile)
