@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Toilet Runner</title>
+  <link rel="stylesheet" href="styles/modals.css">
+</head>
+<body>
+  <div id="canvas"></div>
+  <div id="score">0</div>
+  
+  <!-- Pause Button -->
+  <div id="pause-button">
+    <button id="pause-btn" aria-label="Pause Game">
+      <span aria-hidden="true">⏸</span>
+      <span class="pause-text">Pause</span>
+    </button>
+  </div>
+  
+  <!-- Modal Overlay -->
+  <div class="modal-overlay" id="overlay" role="dialog" aria-modal="true">
+    
+    <!-- Start Screen -->
+    <div class="modal-content" id="start-screen" style="display: flex;">
+      <div class="modal-header">
+        <h1 id="start-title">🚽 Toilet Runner</h1>
+      </div>
+      <div class="modal-body">
+        <p>Tap or press any key to start</p>
+      </div>
+    </div>
+    
+    <!-- Pause Screen -->
+    <div class="modal-content" id="pause-screen" style="display: none;">
+      <div class="modal-header">
+        <h1>⏸️ Paused</h1>
+      </div>
+      <div class="modal-body">
+        <p>Take a break! 🧻</p>
+        <p>Press Resume or ESC to continue</p>
+      </div>
+      <div class="modal-footer">
+        <button id="resume-button" class="btn btn-primary">▶️ Resume</button>
+      </div>
+    </div>
+    
+    <!-- Game Over Screen -->
+    <div class="modal-content" id="game-over-screen" style="display: none;">
+      <div class="modal-header">
+        <h1 id="game-over-title">🏆 Game Over!</h1>
+      </div>
+      <div class="modal-body game-over-body">
+        <p id="final-score">Score: 0</p>
+      </div>
+      <div class="modal-footer game-over-footer">
+        <button id="restart-button" class="btn btn-primary">🔄 Play Again</button>
+        <button id="view-leaderboard-button" class="btn btn-secondary">🏆 Top Scores</button>
+      </div>
+    </div>
+    
+    <!-- Leaderboard Screen -->
+    <div class="modal-content" id="leaderboard-screen" style="display: none;">
+      <div class="modal-header">
+        <h1>🏆 Top Scores</h1>
+      </div>
+      <div class="modal-body leaderboard-body">
+        <ul id="leaderboard-list-full"></ul>
+      </div>
+      <div class="modal-footer leaderboard-footer">
+        <button id="back-to-game-over-button" class="btn btn-secondary">← Back</button>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
