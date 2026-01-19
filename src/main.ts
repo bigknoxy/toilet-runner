@@ -1,3 +1,4 @@
+import '../styles/modals.css';
 import * as THREE from 'three';
 import { SceneManager } from './core/SceneManager';
 import { GameLoop } from './core/GameLoop';
