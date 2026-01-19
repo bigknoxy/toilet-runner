@@ -119,7 +119,7 @@ export class UIManager {
     if (this._startScreen) {
       this._startScreen.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (this._startScreen.style.display !== 'none') {
+        if (this._startScreen && this._startScreen.style.display !== 'none') {
           console.log('UIManager: Click detected on start screen');
           startGame();
         }
@@ -299,7 +299,7 @@ export class UIManager {
           <span class="leaderboard-score">${Math.floor(entry.score)}</span>
           <span class="leaderboard-date">${entry.date}</span>
         `;
-        this._leaderboardListFull.appendChild(li);
+        this._leaderboardListFull?.appendChild(li);
       });
     }
   }

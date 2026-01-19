@@ -129,7 +129,7 @@ export class RunnerController {
   }
 
   getMesh(): THREE.Mesh {
-    return this._mesh as THREE.Mesh;
+    return this._mesh as unknown as THREE.Mesh;
   }
 
   getPosition(): THREE.Vector3 {
