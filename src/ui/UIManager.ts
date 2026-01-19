@@ -324,7 +324,6 @@ export class UIManager {
       case GameState.GAMEOVER:
         this.hideScoreDisplay();
         this.hidePauseButton();
-        // Will show game over screen with score when needed
         break;
       case GameState.LEADERBOARD:
         this.showLeaderboardScreen();
@@ -332,6 +331,14 @@ export class UIManager {
         break;
       default:
         break;
+    }
+  }
+
+  public triggerScoreFlash(): void {
+    if (this._scoreDisplay) {
+      this._scoreDisplay.classList.remove('score-flash');
+      void this._scoreDisplay.offsetWidth;
+      this._scoreDisplay.classList.add('score-flash');
     }
   }
 }

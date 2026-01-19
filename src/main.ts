@@ -7,12 +7,17 @@ import { RunnerController } from './game/RunnerController';
 import { TrackManager } from './game/TrackManager';
 import { ObstacleManager } from './game/ObstacleManager';
 import { CollisionSystem } from './game/CollisionSystem';
+import { AudioManager } from './game/AudioManager';
+import { EnvironmentManager } from './game/EnvironmentManager';
+import { CameraManager } from './game/CameraManager';
 import { InputManager } from './input/InputManager';
 import { UIManager } from './ui/UIManager';
+import { AudioControls } from './ui/AudioControls';
 
 const BASE_SPEED = 10;
-const SPEED_INCREASE = 0.5; // Speed increase per 10 score points
-const SCORE_RATE = 10; // Score points per second
+const SPEED_INCREASE = 0.5;
+const SCORE_RATE = 10;
+const SCORE_MILESTONE = 100;
 
 class ToiletRunner {
   private sceneManager: SceneManager;
@@ -21,8 +26,12 @@ class ToiletRunner {
   private track: TrackManager;
   private obstacles: ObstacleManager;
   private collision: CollisionSystem;
+  private audioManager: AudioManager;
+  private environment: EnvironmentManager;
+  private cameraManager: CameraManager;
   private input: InputManager;
   private ui: UIManager;
+  private audioControls: AudioControls;
   private leaderboard: LeaderboardManager;
   private currentGameState: GameState = GameState.MENU;
   private score = 0;
@@ -37,7 +46,12 @@ class ToiletRunner {
     this.track = new TrackManager(this.sceneManager.getScene());
     this.obstacles = new ObstacleManager(this.sceneManager.getScene(), this.track);
     this.collision = new CollisionSystem();
+    this.audioManager = new AudioManager();
+    this.environment = new EnvironmentManager(this.sceneManager.getScene());
+    this.cameraManager = new CameraManager(this.sceneManager.getCamera());
     this.leaderboard = new LeaderboardManager();
+
+    this.track.applyTileTexture(this.environment.getTileTexture());
 
     console.log('ToiletRunner: Setting up input manager');
     this.input = new InputManager(this.handleLaneChange.bind(this), this.togglePause.bind(this));
@@ -47,16 +61,18 @@ class ToiletRunner {
     this.ui = new UIManager();
     this.ui.setOnPlayCallback(this.startGame.bind(this));
     this.ui.setOnRestartCallback(this.restartGame.bind(this));
-    this.ui.setOnPauseCallback(this.togglePause.bind(this));
-    this.ui.setOnResumeCallback(this.togglePause.bind(this));
+    this.ui.setOnPauseCallback(this.handlePause.bind(this));
+    this.ui.setOnResumeCallback(this.handleResume.bind(this));
     this.ui.setOnViewLeaderboardCallback(this.showLeaderboard.bind(this));
     this.ui.setOnBackToGameOverCallback(this.backToGameOver.bind(this));
     this.ui.setGameState(this.currentGameState);
 
+    console.log('ToiletRunner: Setting up audio controls');
+    this.audioControls = new AudioControls(this.audioManager);
+
     console.log('ToiletRunner: Registering systems with game loop');
     this.gameLoop.registerSystem(this.update.bind(this));
 
-    // Setup window resize
     window.addEventListener('resize', this.handleResize.bind(this));
 
     console.log('ToiletRunner: Starting game loop');
@@ -66,34 +82,38 @@ class ToiletRunner {
 
   private update(delta: number): void {
     if (this.currentGameState === GameState.PLAYING) {
-      // Calculate game speed with difficulty scaling
       const speedIncrease = Math.floor(this.score / 10) * SPEED_INCREASE;
       const gameSpeed = BASE_SPEED + speedIncrease;
-
-      console.log('Update: speed=' + gameSpeed + ', score=' + this.score + ', delta=' + delta);
 
       this.runner.setSpeed(gameSpeed);
       this.runner.update(delta);
       this.track.update(delta, gameSpeed);
-
-      // Update obstacles with collision detection
       this.obstacles.update(delta, gameSpeed, this.score);
+      this.environment.update(delta, gameSpeed);
+      this.cameraManager.update(delta);
 
-      // Check collisions using CollisionSystem
       if (this.collision.checkPlayerVsObstacles(this.runner.getMesh(), this.obstacles)) {
+        this.audioManager.playCollision();
         this.endGame();
+        return;
       }
 
-      // Update score based on time
+      const prevScore = Math.floor(this.score);
       this.score += SCORE_RATE * delta;
+      const newScore = Math.floor(this.score);
+
       this.ui.updateScore(this.score);
+
+      if (Math.floor(newScore / SCORE_MILESTONE) > Math.floor(prevScore / SCORE_MILESTONE)) {
+        this.audioManager.playScoreMilestone(newScore);
+        this.ui.triggerScoreFlash();
+      }
+
     } else if (this.currentGameState === GameState.PAUSED) {
-      // Don't update game state when paused, just render
       this.sceneManager.render();
       return;
     }
 
-    // Always render
     this.sceneManager.render();
   }
 
@@ -106,20 +126,20 @@ class ToiletRunner {
     this.reset();
     this.currentGameState = GameState.PLAYING;
     this.ui.setGameState(this.currentGameState);
+    this.audioManager.playStartGame();
     console.log('startGame: Game state changed to:', this.currentGameState);
   }
 
   private endGame(): void {
     this.currentGameState = GameState.GAMEOVER;
+    this.audioManager.playGameOver();
+    this.cameraManager.triggerShake();
 
-    // Save score to leaderboard
     this.leaderboard.addScore(this.score);
 
-    // Update leaderboard for display
     const topScores = this.leaderboard.getTopScores();
     this.ui.updateLeaderboardFull(topScores);
 
-    // Show game over screen with score
     this.ui.showGameOverScreen(this.score);
   }
 
@@ -142,7 +162,10 @@ class ToiletRunner {
     this.track.reset();
     this.obstacles.reset();
     this.collision.reset();
+    this.environment.reset();
+    this.cameraManager.reset();
     this.score = 0;
+    this.audioManager.setLastScoreMilestone(0);
     this.ui.updateScore(this.score);
   }
 
@@ -153,6 +176,8 @@ class ToiletRunner {
       } else {
         this.runner.moveRight();
       }
+      this.audioManager.playLaneChange();
+      this.cameraManager.triggerShake();
     }
   }
 
@@ -166,10 +191,18 @@ class ToiletRunner {
     }
   }
 
+  private handlePause(): void {
+    this.togglePause();
+    this.audioManager.playPause();
+  }
+
+  private handleResume(): void {
+    this.togglePause();
+    this.audioManager.playResume();
+  }
 }
 
-// Initialize game when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   const game = new ToiletRunner();
-  console.log('Toilet Runner Phase 8 Complete - Final Integration Implemented');
+  console.log('Toilet Runner Polish Complete - All Phases Implemented');
 });

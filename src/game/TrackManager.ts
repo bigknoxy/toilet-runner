@@ -168,4 +168,10 @@ export class TrackManager {
     this.instancedMesh.geometry.dispose();
     (this.instancedMesh.material as THREE.Material).dispose();
   }
+
+  applyTileTexture(texture: THREE.CanvasTexture): void {
+    const material = new THREE.MeshLambertMaterial({ map: texture });
+    this.instancedMesh.material = material;
+    this.instancedMesh.material.needsUpdate = true;
+  }
 }

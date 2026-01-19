@@ -3,32 +3,96 @@ import { GameState } from '../core/GameState';
 
 const LANE_WIDTH = 3;
 const LERP_SPEED = 8;
-const PLAYER_RADIUS = 0.5;
+const PLAYER_RADIUS = 0.8;
 
 export class RunnerController {
-  private _mesh: THREE.Mesh;
-  private _currentLaneIndex: number = 0; // 0 = CENTER, -1 = LEFT, 1 = RIGHT
-  private _currentX: number = 0; // Actual X position, lerped
-  private _targetX: number = 0; // Target lane X position
+  private _mesh: THREE.Group;
+  private _tpMesh: THREE.Mesh;
+  private _currentLaneIndex: number = 0;
+  private _currentX: number = 0;
+  private _targetX: number = 0;
   private _speed: number = 0;
+  private _bounceY: number = 0;
+  private _wobbleTime: number = 0;
+  private _isChangingLanes: boolean = false;
 
   constructor(scene: THREE.Scene) {
-    // Create toilet roll mesh
-    const geometry = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1, 12);
-    const material = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    this._mesh = new THREE.Mesh(geometry, material);
-    
-    // Position at center lane, above ground, fixed Z
+    this._mesh = new THREE.Group();
+
+    const tpTexture = this.createTPTexture();
+    const tpMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xFFFFF0,
+      map: tpTexture
+    });
+
+    const geometry = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1, 16);
+    this._tpMesh = new THREE.Mesh(geometry, tpMaterial);
+    this._tpMesh.position.set(0, 0, 0);
+    this._mesh.add(this._tpMesh);
+
+    const tubeGeometry = new THREE.CylinderGeometry(PLAYER_RADIUS * 0.35, PLAYER_RADIUS * 0.35, 1.05, 12);
+    const tubeMaterial = new THREE.MeshLambertMaterial({ color: 0x8B7355 });
+    const tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
+    tubeMesh.position.set(0, 0, 0);
+    this._mesh.add(tubeMesh);
+
     this._mesh.position.set(0, 0.5, -10);
     
-    // Add to scene
     scene.add(this._mesh);
+  }
+
+  private createTPTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.fillStyle = '#FFFFF0';
+    ctx.fillRect(0, 0, 512, 256);
+
+    ctx.strokeStyle = '#E8E8E8';
+    ctx.lineWidth = 2;
+
+    const spiralSpacing = 64;
+    for (let y = 0; y < 256; y += spiralSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(512, y + 16);
+      ctx.stroke();
+    }
+
+    for (let y = -16; y < 272; y += spiralSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(512, y + 16);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(245, 245, 240, 0.3)';
+    for (let i = 0; i < 50; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 256;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.random() * 3 + 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 1);
+    texture.needsUpdate = true;
+
+    return texture;
   }
 
   moveLeft(): void {
     if (this._currentLaneIndex > -1) {
       this._currentLaneIndex--;
       this._targetX = this._currentLaneIndex * LANE_WIDTH;
+      this._isChangingLanes = true;
+      this._bounceY = 0.15;
+      this._wobbleTime = 0;
     }
   }
 
@@ -36,24 +100,36 @@ export class RunnerController {
     if (this._currentLaneIndex < 1) {
       this._currentLaneIndex++;
       this._targetX = this._currentLaneIndex * LANE_WIDTH;
+      this._isChangingLanes = true;
+      this._bounceY = 0.15;
+      this._wobbleTime = 0;
     }
   }
 
   update(delta: number): void {
-    // Lerp X position for smooth lane switching
     this._currentX = THREE.MathUtils.lerp(this._currentX, this._targetX, LERP_SPEED * delta);
-    
-    // Update mesh position
     this._mesh.position.x = this._currentX;
-    
-    // Rolling animation based on speed (roll around X axis, not Z axis)
-    if (this._speed > 0) {
-      this._mesh.rotation.x -= this._speed * delta / PLAYER_RADIUS;
+
+    let yOffset = 0.5;
+
+    if (this._isChangingLanes) {
+      this._wobbleTime += delta * 12;
+      yOffset += Math.sin(this._wobbleTime) * 0.08;
+      
+      this._bounceY *= 0.85;
+      yOffset += this._bounceY;
+
+      if (this._wobbleTime > Math.PI * 2) {
+        this._isChangingLanes = false;
+        this._wobbleTime = 0;
+      }
     }
+
+    this._mesh.position.y = yOffset;
   }
 
   getMesh(): THREE.Mesh {
-    return this._mesh;
+    return this._mesh as THREE.Mesh;
   }
 
   getPosition(): THREE.Vector3 {
@@ -68,8 +144,6 @@ export class RunnerController {
     this._mesh.position.set(x, y, z);
     this._currentX = x;
     this._targetX = x;
-    
-    // Update lane index based on position
     this._currentLaneIndex = Math.round(x / LANE_WIDTH);
   }
 
@@ -82,7 +156,10 @@ export class RunnerController {
     this._currentX = 0;
     this._targetX = 0;
     this._speed = 0;
+    this._bounceY = 0;
+    this._wobbleTime = 0;
+    this._isChangingLanes = false;
     this._mesh.position.set(0, 0.5, -10);
-    this._mesh.rotation.z = 0;
+    this._tpMesh.rotation.z = 0;
   }
 }
