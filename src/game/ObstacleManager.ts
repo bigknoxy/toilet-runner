@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TrackManager } from './TrackManager';
+import { EmojiTextureAtlas } from './visual/EmojiTextureAtlas';
 
 const LANE_WIDTH = 3;
 const SEGMENT_LENGTH = 10;
@@ -16,6 +17,7 @@ interface ObstacleInstance {
   speedVariation: number;
   scale: number;
   rotationY: number;
+  emojiIndex?: number;
 }
 
 export class ObstacleManager {
@@ -26,17 +28,32 @@ export class ObstacleManager {
   private _spawnTimer = 0;
   private _waveCounter = 0;
   private _currentWaveMode: 'easy' | 'medium' | 'hard' = 'easy';
-  
+  private _emojiFacesEnabled: boolean = false;
   private _bodyMaterial: THREE.MeshLambertMaterial;
   private _eyeMaterial: THREE.MeshBasicMaterial;
+  private _faceGeometry?: THREE.PlaneGeometry;
+  private _faceMaterial?: THREE.MeshBasicMaterial;
   private _bodyGeometry: THREE.SphereGeometry;
   private _tipGeometry: THREE.ConeGeometry;
   private _eyeGeometry: THREE.SphereGeometry;
   private _smileGeometry: THREE.TorusGeometry;
 
-  constructor(scene: THREE.Scene, trackManager: TrackManager) {
+  constructor(scene: THREE.Scene, trackManager: TrackManager, emojiFacesEnabled: boolean = true) {
     this._scene = scene;
     this._trackManager = trackManager;
+    this._emojiFacesEnabled = emojiFacesEnabled;
+
+    // Initialize emoji atlas if enabled
+    if (this._emojiFacesEnabled) {
+      EmojiTextureAtlas.initialize();
+      this._faceGeometry = new THREE.PlaneGeometry(0.6, 0.6);
+      this._faceMaterial = new THREE.MeshBasicMaterial({
+        map: EmojiTextureAtlas.getTexture(),
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthTest: false
+      });
+    }
 
     // Materials
     this._bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x6B4423 });
@@ -57,14 +74,14 @@ export class ObstacleManager {
 
   private createObstacleGroup(): THREE.Group {
     const group = new THREE.Group();
-
+    
     // Body (casts shadows)
     const body = new THREE.Mesh(this._bodyGeometry, this._bodyMaterial);
     body.position.set(0, 0.3, 0);
     body.castShadow = true;
     body.receiveShadow = true;
     group.add(body);
-
+    
     // Tip (casts shadows)
     const tip = new THREE.Mesh(this._tipGeometry, this._bodyMaterial);
     tip.rotation.x = -Math.PI / 2;
@@ -72,28 +89,38 @@ export class ObstacleManager {
     tip.castShadow = true;
     tip.receiveShadow = true;
     group.add(tip);
-
-    // Eyes (no shadows - optimization)
-    const leftEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
-    leftEye.position.set(-0.22, 0.65, 0.55);
-    leftEye.castShadow = false;
-    leftEye.receiveShadow = false;
-    group.add(leftEye);
-
-    const rightEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
-    rightEye.position.set(0.22, 0.65, 0.55);
-    rightEye.castShadow = false;
-    rightEye.receiveShadow = false;
-    group.add(rightEye);
-
-    // Smile (no shadows - optimization)
-    const smile = new THREE.Mesh(this._smileGeometry, this._eyeMaterial);
-    smile.position.set(0, 0.45, 0.65);
-    smile.rotation.x = Math.PI / 4;
-    smile.castShadow = false;
-    smile.receiveShadow = false;
-    group.add(smile);
-
+    
+    // Emoji face (if enabled, replaces eyes/smile)
+    if (this._emojiFacesEnabled && this._faceGeometry && this._faceMaterial) {
+      const face = new THREE.Mesh(this._faceGeometry, this._faceMaterial);
+      face.position.set(0, 0.65, 0.6);
+      face.castShadow = false;
+      face.receiveShadow = false;
+      face.userData.emojiIndex = Math.floor(Math.random() * 5);
+      group.add(face);
+    } else {
+      // Eyes (no shadows - optimization)
+      const leftEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
+      leftEye.position.set(-0.22, 0.65, 0.55);
+      leftEye.castShadow = false;
+      leftEye.receiveShadow = false;
+      group.add(leftEye);
+      
+      const rightEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
+      rightEye.position.set(0.22, 0.65, 0.55);
+      rightEye.castShadow = false;
+      rightEye.receiveShadow = false;
+      group.add(rightEye);
+      
+      // Smile (no shadows - optimization)
+      const smile = new THREE.Mesh(this._smileGeometry, this._eyeMaterial);
+      smile.position.set(0, 0.45, 0.65);
+      smile.rotation.x = Math.PI / 4;
+      smile.castShadow = false;
+      smile.receiveShadow = false;
+      group.add(smile);
+    }
+    
     return group;
   }
 
@@ -204,14 +231,25 @@ export class ObstacleManager {
     if (!inactiveObstacle) return;
 
     const spawnZ = this._trackManager.getFrontZ() - SEGMENT_LENGTH;
-
+    
     inactiveObstacle.active = true;
     inactiveObstacle.lane = lane;
     inactiveObstacle.z = spawnZ;
     inactiveObstacle.speedVariation = 0.85 + Math.random() * 0.3;
     inactiveObstacle.scale = 0.9 + Math.random() * 0.2;
     inactiveObstacle.rotationY = (Math.random() - 0.5) * 0.5;
-
+    inactiveObstacle.emojiIndex = Math.floor(Math.random() * 5);
+    
+    // Update emoji face UVs if enabled
+    if (this._emojiFacesEnabled && this._faceGeometry) {
+      const uvs = EmojiTextureAtlas.getUVs(inactiveObstacle.emojiIndex);
+      this._faceGeometry.attributes.uv.setXY(0, uvs[0].x, uvs[0].y);
+      this._faceGeometry.attributes.uv.setXY(1, uvs[1].x, uvs[1].y);
+      this._faceGeometry.attributes.uv.setXY(2, uvs[2].x, uvs[2].y);
+      this._faceGeometry.attributes.uv.setXY(3, uvs[3].x, uvs[3].y);
+      this._faceGeometry.attributes.uv.needsUpdate = true;
+    }
+    
     const laneX = this.getLaneX(lane);
     inactiveObstacle.mesh.position.set(laneX, 0, spawnZ);
     inactiveObstacle.mesh.rotation.y = inactiveObstacle.rotationY;
