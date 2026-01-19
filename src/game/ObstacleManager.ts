@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { TrackManager } from './TrackManager';
 
 const LANE_WIDTH = 3;
@@ -10,7 +9,7 @@ const DESPAWN_DISTANCE = 10;
 const DIFFICULTY_MULTIPLIER = 0.01;
 
 interface ObstacleInstance {
-  instance: number;
+  mesh: THREE.Group;
   active: boolean;
   z: number;
   lane: number;
@@ -22,32 +21,90 @@ interface ObstacleInstance {
 export class ObstacleManager {
   private _scene: THREE.Scene;
   private _trackManager: TrackManager;
-  private _instancedMesh: THREE.InstancedMesh;
   private _obstacles: ObstacleInstance[] = [];
   private _activeCount = 0;
   private _spawnTimer = 0;
-  private _dummy = new THREE.Object3D();
-  private _material: THREE.MeshLambertMaterial;
   private _waveCounter = 0;
   private _currentWaveMode: 'easy' | 'medium' | 'hard' = 'easy';
+  
+  private _bodyMaterial: THREE.MeshLambertMaterial;
+  private _eyeMaterial: THREE.MeshBasicMaterial;
+  private _bodyGeometry: THREE.SphereGeometry;
+  private _tipGeometry: THREE.ConeGeometry;
+  private _eyeGeometry: THREE.SphereGeometry;
+  private _smileGeometry: THREE.TorusGeometry;
 
   constructor(scene: THREE.Scene, trackManager: TrackManager) {
     this._scene = scene;
     this._trackManager = trackManager;
 
-    this._material = new THREE.MeshLambertMaterial({ color: 0x6B4423 });
+    // Materials
+    this._bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x6B4423 });
+    this._bodyMaterial.side = THREE.FrontSide;
+    this._eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    this._eyeMaterial.side = THREE.FrontSide;
 
-    const mergedGeometry = this.createMergedPoopGeometry();
+    // Optimized geometries (reduced polygons for mobile)
+    this._bodyGeometry = new THREE.SphereGeometry(0.7, 12, 8);
+    this._bodyGeometry.scale(1, 0.7, 1);
+    this._tipGeometry = new THREE.ConeGeometry(0.35, 0.6, 8);
+    this._eyeGeometry = new THREE.SphereGeometry(0.1, 6, 6);
+    this._smileGeometry = new THREE.TorusGeometry(0.18, 0.035, 6, 6, Math.PI);
 
-    this._instancedMesh = new THREE.InstancedMesh(mergedGeometry, this._material, MAX_OBSTACLES);
-    this._instancedMesh.castShadow = true;
-    this._instancedMesh.receiveShadow = true;
-    this._instancedMesh.frustumCulled = false;
-    this._scene.add(this._instancedMesh);
+    // Initialize pool
+    this.initializeObstaclePool();
+  }
 
+  private createObstacleGroup(): THREE.Group {
+    const group = new THREE.Group();
+
+    // Body (casts shadows)
+    const body = new THREE.Mesh(this._bodyGeometry, this._bodyMaterial);
+    body.position.set(0, 0.3, 0);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    group.add(body);
+
+    // Tip (casts shadows)
+    const tip = new THREE.Mesh(this._tipGeometry, this._bodyMaterial);
+    tip.rotation.x = -Math.PI / 2;
+    tip.position.set(0, 0.85, 0);
+    tip.castShadow = true;
+    tip.receiveShadow = true;
+    group.add(tip);
+
+    // Eyes (no shadows - optimization)
+    const leftEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
+    leftEye.position.set(-0.22, 0.65, 0.55);
+    leftEye.castShadow = false;
+    leftEye.receiveShadow = false;
+    group.add(leftEye);
+
+    const rightEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
+    rightEye.position.set(0.22, 0.65, 0.55);
+    rightEye.castShadow = false;
+    rightEye.receiveShadow = false;
+    group.add(rightEye);
+
+    // Smile (no shadows - optimization)
+    const smile = new THREE.Mesh(this._smileGeometry, this._eyeMaterial);
+    smile.position.set(0, 0.45, 0.65);
+    smile.rotation.x = Math.PI / 4;
+    smile.castShadow = false;
+    smile.receiveShadow = false;
+    group.add(smile);
+
+    return group;
+  }
+
+  private initializeObstaclePool(): void {
     for (let i = 0; i < MAX_OBSTACLES; i++) {
+      const group = this.createObstacleGroup();
+      group.visible = false;
+      this._scene.add(group);
+      
       this._obstacles.push({
-        instance: i,
+        mesh: group,
         active: false,
         z: 0,
         lane: 0,
@@ -56,57 +113,18 @@ export class ObstacleManager {
         rotationY: 0
       });
     }
-
-    for (let i = 0; i < MAX_OBSTACLES; i++) {
-      this._dummy.position.set(9999, -100, 9999);
-      this._dummy.updateMatrix();
-      this._instancedMesh.setMatrixAt(i, this._dummy.matrix);
-    }
-    this._instancedMesh.instanceMatrix.needsUpdate = true;
-  }
-
-  private createMergedPoopGeometry(): THREE.BufferGeometry {
-    const geometries: THREE.BufferGeometry[] = [];
-
-    const bodyGeometry = new THREE.SphereGeometry(0.7, 16, 12);
-    bodyGeometry.scale(1, 0.7, 1);
-    bodyGeometry.translate(0, 0.3, 0);
-    geometries.push(bodyGeometry);
-
-    const tipGeometry = new THREE.ConeGeometry(0.35, 0.6, 12);
-    tipGeometry.rotateX(-Math.PI / 2);
-    tipGeometry.translate(0, 0.85, 0);
-    geometries.push(tipGeometry);
-
-    const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-    eyeGeometry.translate(-0.22, 0.65, 0.55);
-    geometries.push(eyeGeometry);
-
-    const rightEyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-    rightEyeGeometry.translate(0.22, 0.65, 0.55);
-    geometries.push(rightEyeGeometry);
-
-    const smileGeometry = new THREE.TorusGeometry(0.18, 0.035, 8, 8, Math.PI);
-    smileGeometry.rotateX(Math.PI / 4);
-    smileGeometry.translate(0, 0.45, 0.65);
-    geometries.push(smileGeometry);
-
-    const merged = BufferGeometryUtils.mergeGeometries(geometries, false);
-    merged.computeVertexNormals();
-
-    return merged;
   }
 
   update(delta: number, speed: number, score: number): void {
     this._spawnTimer -= delta;
-
+    
     const currentSpawnRate = Math.max(0.5, SPAWN_RATE_BASE - (score * DIFFICULTY_MULTIPLIER));
 
     if (this._spawnTimer <= 0) {
       this.spawnObstaclePattern();
       this._spawnTimer = currentSpawnRate;
       this._waveCounter++;
-
+      
       if (this._waveCounter >= 10) {
         this._waveCounter = 0;
         this.updateWaveMode();
@@ -120,18 +138,14 @@ export class ObstacleManager {
       obstacle.z += moveSpeed * delta;
 
       const laneX = this.getLaneX(obstacle.lane);
-      this._dummy.position.set(laneX, 0.6, obstacle.z);
-      this._dummy.rotation.y = obstacle.rotationY;
-      this._dummy.scale.setScalar(obstacle.scale);
-      this._dummy.updateMatrix();
-      this._instancedMesh.setMatrixAt(obstacle.instance, this._dummy.matrix);
+      obstacle.mesh.position.set(laneX, 0, obstacle.z);
+      obstacle.mesh.rotation.y = obstacle.rotationY;
+      obstacle.mesh.scale.setScalar(obstacle.scale);
 
       if (obstacle.z > DESPAWN_DISTANCE) {
         this.despawnObstacle(obstacle);
       }
     }
-
-    this._instancedMesh.instanceMatrix.needsUpdate = true;
   }
 
   private updateWaveMode(): void {
@@ -197,23 +211,19 @@ export class ObstacleManager {
     inactiveObstacle.speedVariation = 0.85 + Math.random() * 0.3;
     inactiveObstacle.scale = 0.9 + Math.random() * 0.2;
     inactiveObstacle.rotationY = (Math.random() - 0.5) * 0.5;
-    this._activeCount++;
 
     const laneX = this.getLaneX(lane);
-    this._dummy.position.set(laneX, 0.6, spawnZ);
-    this._dummy.rotation.y = inactiveObstacle.rotationY;
-    this._dummy.scale.setScalar(inactiveObstacle.scale);
-    this._dummy.updateMatrix();
-    this._instancedMesh.setMatrixAt(inactiveObstacle.instance, this._dummy.matrix);
+    inactiveObstacle.mesh.position.set(laneX, 0, spawnZ);
+    inactiveObstacle.mesh.rotation.y = inactiveObstacle.rotationY;
+    inactiveObstacle.mesh.scale.setScalar(inactiveObstacle.scale);
+    inactiveObstacle.mesh.visible = true;
   }
 
   private despawnObstacle(obstacle: ObstacleInstance): void {
     obstacle.active = false;
     this._activeCount--;
-
-    this._dummy.position.set(0, -100, 0);
-    this._dummy.updateMatrix();
-    this._instancedMesh.setMatrixAt(obstacle.instance, this._dummy.matrix);
+    obstacle.mesh.visible = false;
+    obstacle.mesh.position.set(0, -100, 0);
   }
 
   private getLaneX(lane: number): number {
@@ -231,8 +241,8 @@ export class ObstacleManager {
 
       const obstacleX = this.getLaneX(obstacle.lane);
       const obstacleBox = new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(obstacleX, 0.6, obstacle.z),
-        new THREE.Vector3(1.4 * obstacle.scale, 1.4 * obstacle.scale, 1.2 * obstacle.scale)
+        new THREE.Vector3(obstacleX, 0.3, obstacle.z),
+        new THREE.Vector3(1.4 * obstacle.scale, 1.0 * obstacle.scale, 1.2 * obstacle.scale)
       );
 
       if (playerBox.intersectsBox(obstacleBox)) {
@@ -254,8 +264,6 @@ export class ObstacleManager {
     this._spawnTimer = 0;
     this._waveCounter = 0;
     this._currentWaveMode = 'easy';
-
-    this._instancedMesh.instanceMatrix.needsUpdate = true;
   }
 
   getActiveCount(): number {
@@ -271,7 +279,7 @@ export class ObstacleManager {
       const obstacleX = this.getLaneX(obstacle.lane);
       activeObstacles.push({
         x: obstacleX,
-        y: 0.6,
+        y: 0.3,
         z: obstacle.z,
         lane: obstacle.lane
       });
