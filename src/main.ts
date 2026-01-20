@@ -18,6 +18,7 @@ import { AudioControls } from './ui/AudioControls';
 import { PostProcessingManager } from './game/visual/PostProcessingManager';
 import { ParticleSystem, ParticlePresets } from './game/visual/ParticleSystem';
 import { MaterialFactory } from './game/visual/MaterialFactory';
+import { IntroSequence } from './game/IntroSequence';
 
 const BASE_SPEED = 10;
 const SPEED_INCREASE = 0.5;
@@ -40,6 +41,7 @@ class ToiletRunner {
   private ui!: UIManager;
   private audioControls!: AudioControls;
   private leaderboard!: LeaderboardManager;
+  private introSequence!: IntroSequence;
   private currentGameState: GameState = GameState.MENU;
   private score = 0;
 
@@ -63,10 +65,38 @@ class ToiletRunner {
     this.setupGameLogic();
     this.setupUIAndInput();
 
-    this.gameLoop.registerSystem(this.update.bind(this));
-    this.gameLoop.start();
+    // Initialize intro sequence
+    this.introSequence = new IntroSequence(
+      this.sceneManager.getCamera(),
+      this.sceneManager.getScene(),
+      this.ui
+    );
+
+    // Show loading screen, then play intro sequence
+    this.ui.showLoadingScreen();
+    this.simulateLoading().then(() => {
+      this.ui.hideLoadingScreen();
+      this.playIntroSequence();
+    });
 
     console.log('✅ ToiletRunner initialized');
+  }
+
+  private async simulateLoading(): Promise<void> {
+    const stages = [20, 40, 60, 80, 100];
+    for (const progress of stages) {
+      this.ui.updateLoadingProgress(progress);
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+
+  private playIntroSequence(): void {
+    this.introSequence.start({
+      onComplete: () => {
+        console.log('Intro sequence completed');
+        this.ui.showStartScreen();
+      }
+    });
   }
 
   private setupVisualEffects(): void {
@@ -134,6 +164,16 @@ class ToiletRunner {
     this.ui.setGameState(this.currentGameState);
 
     this.audioControls = new AudioControls(this.audioManager);
+
+    // Register game loop after intro sequence is complete
+    this.introSequence.start({
+      onComplete: () => {
+        console.log('Intro sequence completed, starting game loop');
+        this.gameLoop.registerSystem(this.update.bind(this));
+        this.gameLoop.start();
+        this.ui.showStartScreen();
+      }
+    });
   }
 
   private update(delta: number): void {

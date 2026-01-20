@@ -15,7 +15,15 @@ export class UIManager {
   private _leaderboardListFull: HTMLElement | null = null;
   private _viewLeaderboardButton: HTMLElement | null = null;
   private _backToGameOverButton: HTMLElement | null = null;
-  
+
+  // Intro sequence elements
+  private _introOverlay: HTMLElement | null = null;
+  private _introProgressBar: HTMLElement | null = null;
+  private _introTapPrompt: HTMLElement | null = null;
+  private _loadingScreen: HTMLElement | null = null;
+  private _loadingProgressBar: HTMLElement | null = null;
+  private _loadingTip: HTMLElement | null = null;
+
   private currentGameState: number = 0;
 
   private _onPlay: (() => void) | null = null;
@@ -45,6 +53,14 @@ export class UIManager {
     this._leaderboardListFull = document.getElementById('leaderboard-list-full');
     this._viewLeaderboardButton = document.getElementById('view-leaderboard-button');
     this._backToGameOverButton = document.getElementById('back-to-game-over-button');
+
+    // Intro sequence elements
+    this._introOverlay = document.getElementById('intro-overlay');
+    this._introProgressBar = document.getElementById('intro-progress-bar');
+    this._introTapPrompt = document.getElementById('intro-tap-prompt');
+    this._loadingScreen = document.getElementById('loading-screen');
+    this._loadingProgressBar = document.getElementById('loading-progress-bar');
+    this._loadingTip = document.getElementById('loading-tip');
 
     if (!this._startScreen || !this._pauseScreen || !this._overlay || !this._scoreDisplay ||
         !this._gameOverScreen || !this._finalScore || !this._restartButton ||
@@ -242,6 +258,82 @@ export class UIManager {
   public hideScoreDisplay(): void {
     if (this._scoreDisplay) {
       this._scoreDisplay.style.display = 'none';
+    }
+  }
+
+  // Intro Sequence Methods
+  public showIntroOverlay(): void {
+    if (this._introOverlay) {
+      this._introOverlay.style.display = 'flex';
+      setTimeout(() => {
+        this._introOverlay?.classList.add('visible');
+      }, 10);
+    }
+  }
+
+  public hideIntroOverlay(): void {
+    if (this._introOverlay) {
+      this._introOverlay.classList.remove('visible');
+      setTimeout(() => {
+        if (this._introOverlay) {
+          this._introOverlay.style.display = 'none';
+        }
+      }, 500);
+    }
+  }
+
+  public updateIntroProgress(progress: number): void {
+    if (this._introProgressBar) {
+      this._introProgressBar.style.width = `${progress}%`;
+    }
+  }
+
+  public setIntroOpacity(opacity: number): void {
+    if (this._introOverlay) {
+      this._introOverlay.style.opacity = opacity.toString();
+    }
+  }
+
+  public setTapPromptOpacity(opacity: number): void {
+    if (this._introTapPrompt) {
+      this._introTapPrompt.style.opacity = opacity.toString();
+    }
+  }
+
+  public showLoadingScreen(): void {
+    if (this._loadingScreen) {
+      this._loadingScreen.style.display = 'flex';
+    }
+    this._updateLoadingTip();
+  }
+
+  public hideLoadingScreen(): void {
+    if (this._loadingScreen) {
+      this._loadingScreen.style.display = 'none';
+    }
+  }
+
+  public updateLoadingProgress(progress: number): void {
+    if (this._loadingProgressBar) {
+      this._loadingProgressBar.style.width = `${progress}%`;
+    }
+  }
+
+  private _updateLoadingTip(): void {
+    const tips = [
+      'Tip: Swipe left or right to dodge!',
+      'Tip: Tap edges of screen to change lanes!',
+      'Tip: Watch for gaps between obstacles!',
+      'Tip: Speed increases over time!',
+      'Tip: Dodge, don\'t get hit!',
+      'Tip: Practice makes perfect!',
+      'Tip: Stay focused!',
+      'Tip: Every second counts!'
+    ];
+
+    if (this._loadingTip) {
+      const randomTip = tips[Math.floor(Math.random() * tips.length)];
+      this._loadingTip.textContent = randomTip;
     }
   }
 
