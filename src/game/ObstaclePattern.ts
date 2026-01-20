@@ -31,28 +31,28 @@ export class PatternPool {
         id: 'E1',
         difficulty: 'EASY',
         obstacles: [{ lane: 0, speedMultiplier: 1.0 }],
-        gapToNext: 25,
+        gapToNext: 30, // Optimized: ~3 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 1
       },
       {
         id: 'E2',
         difficulty: 'EASY',
         obstacles: [{ lane: 1, speedMultiplier: 1.1 }],
-        gapToNext: 20,
+        gapToNext: 30, // Optimized: ~3 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 0
       },
       {
         id: 'E3',
         difficulty: 'EASY',
         obstacles: [{ lane: 2, speedMultiplier: 1.0 }],
-        gapToNext: 25,
+        gapToNext: 30, // Optimized: ~3 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 1
       },
       {
         id: 'E4',
         difficulty: 'EASY',
         obstacles: [{ lane: 1, speedMultiplier: 1.2 }],
-        gapToNext: 22,
+        gapToNext: 30, // Optimized: ~3 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 2
       }
     ];
@@ -67,7 +67,7 @@ export class PatternPool {
           { lane: 0, speedMultiplier: 1.0 },
           { lane: 2, speedMultiplier: 1.0 }
         ],
-        gapToNext: 25,
+        gapToNext: 28, // Optimized: ~2.8 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 1
       },
       {
@@ -77,7 +77,7 @@ export class PatternPool {
           { lane: 1, speedMultiplier: 1.1 },
           { lane: 2, speedMultiplier: 1.0 }
         ],
-        gapToNext: 22,
+        gapToNext: 28, // Optimized: ~2.8 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 0
       },
       {
@@ -87,7 +87,7 @@ export class PatternPool {
           { lane: 0, speedMultiplier: 1.0 },
           { lane: 1, speedMultiplier: 1.1 }
         ],
-        gapToNext: 22,
+        gapToNext: 28, // Optimized: ~2.8 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 2
       },
       {
@@ -97,7 +97,7 @@ export class PatternPool {
           { lane: 0, speedMultiplier: 1.2 },
           { lane: 2, speedMultiplier: 1.1 }
         ],
-        gapToNext: 20,
+        gapToNext: 28, // Optimized: ~2.8 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 1
       }
     ];
@@ -112,7 +112,7 @@ export class PatternPool {
           { lane: 0, speedMultiplier: 1.2 },
           { lane: 1, speedMultiplier: 1.1 }
         ],
-        gapToNext: 18,
+        gapToNext: 24, // Optimized: ~2.4 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 2
       },
       {
@@ -122,7 +122,7 @@ export class PatternPool {
           { lane: 1, speedMultiplier: 1.3 },
           { lane: 2, speedMultiplier: 1.2 }
         ],
-        gapToNext: 18,
+        gapToNext: 24, // Optimized: ~2.4 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 0
       },
       {
@@ -132,7 +132,7 @@ export class PatternPool {
           { lane: 0, speedMultiplier: 1.3 },
           { lane: 2, speedMultiplier: 1.3 }
         ],
-        gapToNext: 16,
+        gapToNext: 24, // Optimized: ~2.4 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 1
       },
       {
@@ -142,7 +142,7 @@ export class PatternPool {
           { lane: 0, speedMultiplier: 1.4 },
           { lane: 1, speedMultiplier: 1.2 }
         ],
-        gapToNext: 16,
+        gapToNext: 24, // Optimized: ~2.4 seconds at base speed, room for 2-lane moves
         guaranteedClearLane: 2
       }
     ];
@@ -157,7 +157,7 @@ export class PatternPool {
           { lane: 0, speedMultiplier: 1.5 },
           { lane: 1, speedMultiplier: 1.4 }
         ],
-        gapToNext: 15,
+        gapToNext: 20, // Optimized: ~2.0 seconds at base speed, tight but doable for 2-lane moves
         guaranteedClearLane: 2
       },
       {
@@ -167,7 +167,7 @@ export class PatternPool {
           { lane: 1, speedMultiplier: 1.5 },
           { lane: 2, speedMultiplier: 1.4 }
         ],
-        gapToNext: 15,
+        gapToNext: 20, // Optimized: ~2.0 seconds at base speed, tight but doable for 2-lane moves
         guaranteedClearLane: 0
       },
       {
@@ -177,7 +177,7 @@ export class PatternPool {
           { lane: 0, speedMultiplier: 1.6 },
           { lane: 2, speedMultiplier: 1.5 }
         ],
-        gapToNext: 14,
+        gapToNext: 20, // Optimized: ~2.0 seconds at base speed, tight but doable for 2-lane moves
         guaranteedClearLane: 1
       },
       {
@@ -187,7 +187,7 @@ export class PatternPool {
           { lane: 0, speedMultiplier: 1.7 },
           { lane: 1, speedMultiplier: 1.6 }
         ],
-        gapToNext: 14,
+        gapToNext: 20, // Optimized: ~2.0 seconds at base speed, tight but doable for 2-lane moves
         guaranteedClearLane: 2
       }
     ];

@@ -174,6 +174,10 @@ export class UIManager {
       this._overlay.style.display = 'none';
       this._startScreen.style.display = 'none';
     }
+    // Show pause button when gameplay starts
+    if (this._pauseButtonContainer) {
+      this._pauseButtonContainer.style.display = 'block';
+    }
   }
 
   public showGameOverScreen(finalScore: number): void {
@@ -222,6 +226,10 @@ export class UIManager {
     }
     if (this._leaderboardScreen) {
       this._leaderboardScreen.style.display = 'none';
+    }
+    // Hide pause button on all non-gameplay screens
+    if (this._pauseButtonContainer) {
+      this._pauseButtonContainer.style.display = 'none';
     }
   }
 

@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { GameState } from '../core/GameState';
 
 const LANE_WIDTH = 3;
-const LERP_SPEED = 8;
+const LERP_SPEED = 6;
 const PLAYER_RADIUS = 0.8;
+// Player Z position: -4 for lower screen position (closer to camera, ~9 unit gap)
+const PLAYER_Z = -4;
 
 export class RunnerController {
   private _mesh: THREE.Group;
@@ -36,8 +38,8 @@ export class RunnerController {
     tubeMesh.position.set(0, 0, 0);
     this._mesh.add(tubeMesh);
 
-    this._mesh.position.set(0, 0.5, -10);
-    
+    this._mesh.position.set(0, 0.5, PLAYER_Z);
+
     scene.add(this._mesh);
   }
 
@@ -159,7 +161,7 @@ export class RunnerController {
     this._bounceY = 0;
     this._wobbleTime = 0;
     this._isChangingLanes = false;
-    this._mesh.position.set(0, 0.5, -10);
+    this._mesh.position.set(0, 0.5, PLAYER_Z);
     this._tpMesh.rotation.z = 0;
   }
 }

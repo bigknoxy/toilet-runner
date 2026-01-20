@@ -3,7 +3,8 @@ import * as THREE from 'three';
 const LANE_WIDTH = 3;
 const SEGMENT_LENGTH = 10;
 const VISIBLE_SEGMENTS = 8;
-const SPAWN_DISTANCE = 80;
+// Reduced from 80 to 60 - obstacles spawn closer for better visibility
+const SPAWN_DISTANCE = 60;
 const DESPAWN_DISTANCE = 20;
 
 interface TrackSegment {
@@ -40,9 +41,11 @@ export class TrackManager {
   }
 
   private initializeSegments(): void {
-    // Create initial segments at player position
+    // Create initial segments centered around player position (PLAYER_Z = -4)
+    // Spawn from Z=-40 to Z=30 (70 units total = 7 segments visible)
+    const startZ = -40;
     for (let i = 0; i < VISIBLE_SEGMENTS; i++) {
-      const z = -i * SEGMENT_LENGTH;
+      const z = startZ + i * SEGMENT_LENGTH;
       this.createSegment(z);
     }
   }
@@ -116,8 +119,9 @@ export class TrackManager {
       }
     }
 
-    // Spawn segments ahead if needed
-    if (frontmostZ > -SPAWN_DISTANCE) {
+    // Spawn segments ahead if needed (spawn 40 units ahead for better visibility)
+    const SPAWN_DISTANCE_ADJUSTED = 40;
+    if (frontmostZ > -SPAWN_DISTANCE_ADJUSTED) {
       const newZ = frontmostZ - SEGMENT_LENGTH;
       this.createSegment(newZ);
     }
