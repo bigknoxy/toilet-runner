@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GameState } from '../core/GameState';
+import { CharacterCustomization } from './CharacterCustomization';
 
 const LANE_WIDTH = 3;
 const LERP_SPEED = 6;
@@ -29,18 +30,23 @@ export class RunnerController {
   private _idleTime: number = 0;  // Track idle time for continuous wobble
   private _scaleY: number = 1;    // For squash/stretch effect
   private _scaleX: number = 1;
+  private _characterCustomization: CharacterCustomization;
+  private _tpMaterial: THREE.MeshLambertMaterial;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, characterCustomization: CharacterCustomization) {
     this._mesh = new THREE.Group();
+    this._characterCustomization = characterCustomization;
 
-    const tpTexture = this.createTPTexture();
-    const tpMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xFFFFF0,
-      map: tpTexture
+    const skin = characterCustomization.getSelectedSkin();
+    const skinColor = this._getSkinColor(skin);
+
+    this._tpMaterial = new THREE.MeshLambertMaterial({
+      color: skinColor,
+      map: this.createTPTexture()
     });
 
     const geometry = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1, 16);
-    this._tpMesh = new THREE.Mesh(geometry, tpMaterial);
+    this._tpMesh = new THREE.Mesh(geometry, this._tpMaterial);
     this._tpMesh.position.set(0, 0, 0);
     this._mesh.add(this._tpMesh);
 
@@ -53,6 +59,25 @@ export class RunnerController {
     this._mesh.position.set(0, 0.5, PLAYER_Z);
 
     scene.add(this._mesh);
+  }
+
+  private _getSkinColor(skin: { color: number | string; gradient?: number[] } | undefined): number | string {
+    if (!skin) return 0xFFFFF0;
+
+    // For gradient skins, use a blended color
+    if (skin.gradient && skin.gradient.length >= 2) {
+      return skin.gradient[0]; // Use first gradient color for base
+    }
+    return skin.color;
+  }
+
+  updateSkin(skinId: string): void {
+    const customization = new CharacterCustomization();
+    const skin = customization.getSkins().find(s => s.id === skinId);
+    if (skin) {
+      const color = this._getSkinColor(skin);
+      this._tpMaterial.color.set(color);
+    }
   }
 
   private createTPTexture(): THREE.CanvasTexture {
