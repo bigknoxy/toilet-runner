@@ -24,9 +24,12 @@ export class SceneManager {
 
   private createCamera(): THREE.PerspectiveCamera {
     const aspect = window.innerWidth / window.innerHeight;
+    // Natural FOV (60°) for less distortion, better aesthetics
     const camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 200);
-    camera.position.set(0, 5, 10);
-    camera.lookAt(0, 0, -10);
+    // Higher camera vantage point (Y=2.8) to look down on player, further Z (6) for better world visibility
+    camera.position.set(0, 2.8, 6);
+    // Look higher above player (Y=2.5) to push player into lower third, 30 units ahead for obstacle preview
+    camera.lookAt(0, 2.5, -30);
     return camera;
   }
 

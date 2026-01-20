@@ -1,9 +1,19 @@
 import * as THREE from 'three';
 import { GameState } from '../core/GameState';
+import { CharacterCustomization } from './CharacterCustomization';
 
 const LANE_WIDTH = 3;
-const LERP_SPEED = 8;
+const LERP_SPEED = 6;
 const PLAYER_RADIUS = 0.8;
+// Player Z position: -4 for lower screen position (closer to camera, ~9 unit gap)
+const PLAYER_Z = -4;
+
+// Character personality animation constants
+const IDLE_WOBBLE_SPEED = 3;      // Speed of idle wobble
+const IDLE_WOBBLE_AMPLITUDE = 0.05;  // Angle of idle wobble (radians)
+const SQUASH_STRETCH = 0.15;      // Scale amount for squash/stretch
+const SUCCESS_BOUNCE = 0.2;       // Bounce height on successful dodge
+const NEAR_OBSTACLE_SPEED = 8;    // Wobble speed when near obstacle
 
 export class RunnerController {
   private _mesh: THREE.Group;
@@ -15,18 +25,28 @@ export class RunnerController {
   private _bounceY: number = 0;
   private _wobbleTime: number = 0;
   private _isChangingLanes: boolean = false;
+  private _isNearObstacle: boolean = false;
+  private _successBounce: number = 0;
+  private _idleTime: number = 0;  // Track idle time for continuous wobble
+  private _scaleY: number = 1;    // For squash/stretch effect
+  private _scaleX: number = 1;
+  private _characterCustomization: CharacterCustomization;
+  private _tpMaterial: THREE.MeshLambertMaterial;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, characterCustomization: CharacterCustomization) {
     this._mesh = new THREE.Group();
+    this._characterCustomization = characterCustomization;
 
-    const tpTexture = this.createTPTexture();
-    const tpMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xFFFFF0,
-      map: tpTexture
+    const skin = characterCustomization.getSelectedSkin();
+    const skinColor = this._getSkinColor(skin);
+
+    this._tpMaterial = new THREE.MeshLambertMaterial({
+      color: skinColor,
+      map: this.createTPTexture()
     });
 
     const geometry = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1, 16);
-    this._tpMesh = new THREE.Mesh(geometry, tpMaterial);
+    this._tpMesh = new THREE.Mesh(geometry, this._tpMaterial);
     this._tpMesh.position.set(0, 0, 0);
     this._mesh.add(this._tpMesh);
 
@@ -36,9 +56,28 @@ export class RunnerController {
     tubeMesh.position.set(0, 0, 0);
     this._mesh.add(tubeMesh);
 
-    this._mesh.position.set(0, 0.5, -10);
-    
+    this._mesh.position.set(0, 0.5, PLAYER_Z);
+
     scene.add(this._mesh);
+  }
+
+  private _getSkinColor(skin: { color: number | string; gradient?: number[] } | undefined): number | string {
+    if (!skin) return 0xFFFFF0;
+
+    // For gradient skins, use a blended color
+    if (skin.gradient && skin.gradient.length >= 2) {
+      return skin.gradient[0]; // Use first gradient color for base
+    }
+    return skin.color;
+  }
+
+  updateSkin(skinId: string): void {
+    const customization = new CharacterCustomization();
+    const skin = customization.getSkins().find(s => s.id === skinId);
+    if (skin) {
+      const color = this._getSkinColor(skin);
+      this._tpMaterial.color.set(color);
+    }
   }
 
   private createTPTexture(): THREE.CanvasTexture {
@@ -112,7 +151,12 @@ export class RunnerController {
 
     let yOffset = 0.5;
 
+    // Squash/stretch effect - stretch when moving, squash when landing
     if (this._isChangingLanes) {
+      // Stretch: scale Y up, X down during movement
+      this._scaleY = THREE.MathUtils.lerp(this._scaleY, 1 + SQUASH_STRETCH, delta * 10);
+      this._scaleX = THREE.MathUtils.lerp(this._scaleX, 1 - SQUASH_STRETCH * 0.5, delta * 10);
+      
       this._wobbleTime += delta * 12;
       yOffset += Math.sin(this._wobbleTime) * 0.08;
       
@@ -122,10 +166,42 @@ export class RunnerController {
       if (this._wobbleTime > Math.PI * 2) {
         this._isChangingLanes = false;
         this._wobbleTime = 0;
+        // Land: normalize scale
+        this._scaleY = 1;
+        this._scaleX = 1;
+      }
+    } else {
+      // Normalize scale when not changing lanes
+      this._scaleY = THREE.MathUtils.lerp(this._scaleY, 1, delta * 5);
+      this._scaleX = THREE.MathUtils.lerp(this._scaleX, 1, delta * 5);
+
+      // Idle personality: gentle wobble animation
+      if (!this._isChangingLanes) {
+        this._idleTime += delta;
+        const wobbleSpeed = this._isNearObstacle ? NEAR_OBSTACLE_SPEED : IDLE_WOBBLE_SPEED;
+        const wobbleAmp = this._isNearObstacle ? IDLE_WOBBLE_AMPLITUDE * 1.5 : IDLE_WOBBLE_AMPLITUDE;
+        
+        // Apply wobble rotation to the TP mesh
+        this._tpMesh.rotation.z = Math.sin(this._idleTime * wobbleSpeed) * wobbleAmp;
+        
+        // Slight bounce when near obstacle (nervous animation)
+        if (this._isNearObstacle) {
+          yOffset += Math.sin(this._idleTime * 15) * 0.03;
+        }
       }
     }
 
+    // Success bounce effect
+    if (this._successBounce > 0.01) {
+      yOffset += this._successBounce;
+      this._successBounce *= 0.8;
+      this._scaleY = 1 + this._successBounce * 2;
+    }
+
     this._mesh.position.y = yOffset;
+    
+    // Apply squash/stretch scale to the mesh
+    this._mesh.scale.set(this._scaleX, this._scaleY, this._scaleX);
   }
 
   getMesh(): THREE.Mesh {
@@ -151,6 +227,14 @@ export class RunnerController {
     this._speed = speed;
   }
 
+  setNearObstacle(near: boolean): void {
+    this._isNearObstacle = near;
+  }
+
+  triggerSuccessBounce(): void {
+    this._successBounce = SUCCESS_BOUNCE;
+  }
+
   reset(): void {
     this._currentLaneIndex = 0;
     this._currentX = 0;
@@ -159,7 +243,13 @@ export class RunnerController {
     this._bounceY = 0;
     this._wobbleTime = 0;
     this._isChangingLanes = false;
-    this._mesh.position.set(0, 0.5, -10);
+    this._isNearObstacle = false;
+    this._successBounce = 0;
+    this._idleTime = 0;
+    this._scaleY = 1;
+    this._scaleX = 1;
+    this._mesh.position.set(0, 0.5, PLAYER_Z);
     this._tpMesh.rotation.z = 0;
+    this._mesh.scale.set(1, 1, 1);
   }
 }

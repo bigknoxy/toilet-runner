@@ -6,14 +6,44 @@
   <meta name="description" content="A 3D endless runner game where you dodge poop obstacles as a toilet paper roll!">
   <title>Toilet Runner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles/intro.css">
+  <link rel="stylesheet" href="/styles/loading.css">
+  <link rel="stylesheet" href="/styles/buttons.css">
+  <link rel="stylesheet" href="/styles/transitions.css">
 </head>
 <body>
   <div id="canvas"></div>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen" style="display: none;">
+    <div class="loading-content">
+      <div class="loading-spinner">
+        <div class="tp-spinner">🧻</div>
+      </div>
+      <div class="loading-text">Loading...</div>
+      <div class="loading-progress">
+        <div class="loading-progress-bar" id="loading-progress-bar"></div>
+      </div>
+      <div class="loading-tip" id="loading-tip">Tip: Swipe left or right to dodge!</div>
+    </div>
+  </div>
+
+  <!-- Intro Overlay -->
+  <div id="intro-overlay" class="intro-overlay" style="display: none;">
+    <div class="intro-content">
+      <div class="intro-logo">🚽 Toilet Runner</div>
+      <div class="intro-progress-container">
+        <div class="intro-progress-bar" id="intro-progress-bar"></div>
+      </div>
+      <div class="intro-tap-prompt" id="intro-tap-prompt">Tap anywhere to begin</div>
+    </div>
+  </div>
+
   <div id="score">0</div>
   
-  <!-- Pause Button -->
-  <div id="pause-button">
+  <!-- Pause Button - Hidden by default, shown during gameplay -->
+  <div id="pause-button" style="display: none;">
     <button id="pause-btn" aria-label="Pause Game">
       <span aria-hidden="true">⏸</span>
       <span class="pause-text">Pause</span>
@@ -28,13 +58,15 @@
   <!-- Modal Overlay -->
   <div class="modal-overlay" id="overlay" role="dialog" aria-modal="true">
     
-    <!-- Start Screen -->
-    <div class="modal-content" id="start-screen" style="display: flex;">
-      <div class="modal-header">
-        <h1 id="start-title">🚽 Toilet Runner</h1>
-      </div>
-      <div class="modal-body">
-        <p>Tap or press any key to start</p>
+    <!-- Start Screen - Blue gradient theme matching intro -->
+    <div class="start-screen" id="start-screen" style="display: flex;">
+      <div class="start-content">
+        <div class="start-logo">🚽 Toilet Runner</div>
+        <div class="start-subtitle">Dodge the poop!</div>
+        <div class="start-prompt">
+          <span class="pulse-dot"></span>
+          Tap or press any key to start
+        </div>
       </div>
     </div>
     

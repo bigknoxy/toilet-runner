@@ -3,6 +3,10 @@ export class AudioManager {
   private _masterGain: GainNode | null = null;
   private _enabled: boolean = true;
   private _lastScoreMilestone: number = 0;
+  private _bgmOscillators: OscillatorNode[] = [];
+  private _bgmGain: GainNode | null = null;
+  private _speed: number = 10;
+  private _isPlaying: boolean = false;
 
   private ensureContext(): void {
     if (!this._context) {
@@ -10,6 +14,101 @@ export class AudioManager {
       this._masterGain = this._context.createGain();
       this._masterGain.connect(this._context.destination);
       this._masterGain.gain.value = 0.25;
+
+      // Create background music gain node
+      this._bgmGain = this._context.createGain();
+      this._bgmGain.connect(this._masterGain);
+      this._bgmGain.gain.value = 0.08;
+    }
+  }
+
+  // Layered background music that changes with speed
+  startBackgroundMusic(): void {
+    this.ensureContext();
+    if (!this._context || !this._bgmGain) return;
+
+    this._isPlaying = true;
+    this._updateBackgroundMusic();
+  }
+
+  stopBackgroundMusic(): void {
+    this._isPlaying = false;
+    this._bgmOscillators.forEach(osc => {
+      try {
+        osc.stop();
+        osc.disconnect();
+      } catch (e) {}
+    });
+    this._bgmOscillators = [];
+  }
+
+  private _updateBackgroundMusic(): void {
+    if (!this._isPlaying || !this._context || !this._bgmGain) return;
+
+    // Stop existing oscillators
+    this._bgmOscillators.forEach(osc => {
+      try {
+        osc.stop();
+        osc.disconnect();
+      } catch (e) {}
+    });
+    this._bgmOscillators = [];
+
+    // Base rhythm - lower tempo when slower
+    const tempo = Math.max(60, this._speed * 6);
+    const beatInterval = 60 / tempo;
+
+    // Create ambient bass drone
+    const bassOsc = this._context.createOscillator();
+    const bassGain = this._bgmGain;
+    bassOsc.type = 'sine';
+    bassOsc.frequency.value = 55 + (this._speed * 0.5); // Bass rises with speed
+    bassGain.gain.value = 0.1;
+    bassOsc.connect(bassGain);
+    bassOsc.start();
+    this._bgmOscillators.push(bassOsc);
+
+    // Create rhythmic beeps based on speed
+    const createBeat = (delay: number, freq: number) => {
+      setTimeout(() => {
+        if (!this._isPlaying || !this._context) return;
+
+        const osc = this._context.createOscillator();
+        const gain = this._context.createGain();
+        const filter = this._context.createBiquadFilter();
+
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+
+        filter.type = 'lowpass';
+        filter.frequency.value = 800 + this._speed * 50;
+
+        gain.gain.setValueAtTime(0.05, this._context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this._context.currentTime + 0.1);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this._masterGain!);
+
+        osc.start();
+        osc.stop(this._context.currentTime + 0.1);
+
+        // Schedule next beat
+        if (this._isPlaying) {
+          createBeat(beatInterval, freq);
+        }
+      }, delay * 1000);
+    };
+
+    // Start rhythmic pattern
+    createBeat(0, 220 + this._speed * 2);
+    createBeat(beatInterval * 0.5, 277 + this._speed * 2);
+  }
+
+  update(speed: number): void {
+    this._speed = speed;
+    if (this._isPlaying) {
+      this._updateBackgroundMusic();
     }
   }
 
