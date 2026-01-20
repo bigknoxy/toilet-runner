@@ -22,6 +22,8 @@ interface ObstacleInstance {
   scale: number;
   rotationY: number;
   emojiIndex?: number;
+  wobbleTime: number;  // For animation
+  rotationSpeed: number;  // For spinning obstacles
 }
 
 export class ObstacleManager {
@@ -143,7 +145,9 @@ export class ObstacleManager {
         lane: 0,
         speedVariation: 1,
         scale: 1,
-        rotationY: 0
+        rotationY: 0,
+        wobbleTime: Math.random() * Math.PI * 2,  // Random start for varied animation
+        rotationSpeed: 0  // Default no rotation
       });
     }
   }
@@ -160,15 +164,29 @@ export class ObstacleManager {
       this._waveCounter++;
     }
 
+    const time = Date.now() * 0.001;  // Global time for animations
+
     for (const obstacle of this._obstacles) {
       if (!obstacle.active) continue;
 
       const moveSpeed = speed * obstacle.speedVariation;
       obstacle.z += moveSpeed * delta;
 
+      // Update wobble animation
+      obstacle.wobbleTime += delta * 3;
+
       const laneX = this.getLaneX(obstacle.lane);
       obstacle.mesh.position.set(laneX, 0, obstacle.z);
-      obstacle.mesh.rotation.y = obstacle.rotationY;
+
+      // Apply wobble rotation for "alive" feeling
+      const wobble = Math.sin(obstacle.wobbleTime) * 0.1;
+      obstacle.mesh.rotation.y = obstacle.rotationY + wobble;
+
+      // Apply subtle rotation for spinning obstacles
+      if (obstacle.rotationSpeed > 0) {
+        obstacle.mesh.rotation.y += obstacle.rotationSpeed * delta;
+      }
+
       obstacle.mesh.scale.setScalar(obstacle.scale);
 
       if (obstacle.z > DESPAWN_DISTANCE) {
