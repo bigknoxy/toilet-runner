@@ -51,9 +51,9 @@ export class PatternPool {
       {
         id: 'E4',
         difficulty: 'EASY',
-        obstacles: [{ lane: 0, speedMultiplier: 1.2 }],
+        obstacles: [{ lane: 1, speedMultiplier: 1.2 }],
         gapToNext: 22,
-        guaranteedClearLane: 1
+        guaranteedClearLane: 2
       }
     ];
   }
@@ -236,5 +236,32 @@ export class PatternPool {
     }
 
     return { valid, invalid };
+  }
+
+  static getPatternsByClearLane(clearLane: 0 | 1 | 2): ObstaclePattern[] {
+    return this.patterns.filter(p => p.guaranteedClearLane === clearLane);
+  }
+
+  static getPatternsByDifficultyAndClearLane(difficulty: Difficulty, clearLane: 0 | 1 | 2): ObstaclePattern[] {
+    return this.patterns.filter(p => 
+      p.difficulty === difficulty && p.guaranteedClearLane === clearLane
+    );
+  }
+
+  static analyzeClearLaneDistribution(): void {
+    console.log('📊 Clear Lane Distribution Analysis:');
+    
+    for (const difficulty of ['EASY', 'MEDIUM', 'HARD', 'EXTREME'] as Difficulty[]) {
+      const patterns = this.getPatternsByDifficulty(difficulty);
+      const laneCounts = { 0: 0, 1: 0, 2: 0 };
+      
+      for (const pattern of patterns) {
+        if (pattern.guaranteedClearLane !== undefined) {
+          laneCounts[pattern.guaranteedClearLane]++;
+        }
+      }
+      
+      console.log(`  ${difficulty}: Lane 0: ${laneCounts[0]}, Lane 1: ${laneCounts[1]}, Lane 2: ${laneCounts[2]}`);
+    }
   }
 }
