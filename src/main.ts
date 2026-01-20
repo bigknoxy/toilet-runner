@@ -76,6 +76,9 @@ class ToiletRunner {
     this.ui.showLoadingScreen();
     this.simulateLoading().then(() => {
       this.ui.hideLoadingScreen();
+      // Start game loop immediately - intro will overlay on top
+      this.gameLoop.registerSystem(this.update.bind(this));
+      this.gameLoop.start();
       this.playIntroSequence();
     });
 
@@ -164,16 +167,6 @@ class ToiletRunner {
     this.ui.setGameState(this.currentGameState);
 
     this.audioControls = new AudioControls(this.audioManager);
-
-    // Register game loop after intro sequence is complete
-    this.introSequence.start({
-      onComplete: () => {
-        console.log('Intro sequence completed, starting game loop');
-        this.gameLoop.registerSystem(this.update.bind(this));
-        this.gameLoop.start();
-        this.ui.showStartScreen();
-      }
-    });
   }
 
   private update(delta: number): void {
