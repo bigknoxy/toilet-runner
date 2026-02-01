@@ -18,6 +18,15 @@ export class CollisionSystem {
 
     // Get active obstacles from obstacle manager
     const activeObstacles = obstacleManager.getActiveObstacles();
+    
+    // DEBUG: Log obstacle positions to see if they're actually in play area
+    if (Math.random() < 0.05) {
+      console.log('[COLLISION] Active obstacles:', activeObstacles.length);
+      activeObstacles.forEach((obs, i) => {
+        console.log(`[COLLISION] Obstacle ${i}: pos=(${obs.x.toFixed(2)}, ${obs.y.toFixed(2)}, ${obs.z.toFixed(2)})`);
+      });
+      console.log('[COLLISION] Player pos:', playerMesh.position);
+    }
 
     // Check collision with each active obstacle
     for (const obstacle of activeObstacles) {
@@ -40,6 +49,12 @@ export class CollisionSystem {
 
       // Check intersection
       if (this._playerBox.intersectsBox(this._obstacleBox)) {
+        console.log('[COLLISION] ==================== COLLISION DETECTED ====================');
+        console.log('[COLLISION] Player position:', playerMesh.position);
+        console.log('[COLLISION] Player box:', this._playerBox.min, 'to', this._playerBox.max);
+        console.log('[COLLISION] Obstacle box:', this._obstacleBox.min, 'to', this._obstacleBox.max);
+        console.log('[COLLISION] Obstacle position:', obstacle.x, obstacle.y, obstacle.z);
+        console.log('[COLLISION] Distance between player and obstacle:', playerMesh.position.distanceTo(new THREE.Vector3(obstacle.x, obstacle.y, obstacle.z)));
         return true; // Collision detected
       }
     }

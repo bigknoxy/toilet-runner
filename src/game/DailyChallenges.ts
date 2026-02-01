@@ -1,8 +1,10 @@
+import { StatsManager } from '../core/StatsManager';
+
 export interface DailyChallenge {
   id: string;
   title: string;
   description: string;
-  type: 'survive' | 'dodge' | | 'score' | 'streak' | 'distance';
+  type: 'survive' | 'dodge' | 'score' | 'streak' | 'distance';
   target: number;
   reward: number; // Bonus points
   icon: string;
@@ -14,6 +16,12 @@ export interface DailyChallenge {
 export class DailyChallengeSystem {
   private _challenges: DailyChallenge[] = [];
   private _lastGenerated: string = ''; // Date string for last generation
+  private _coinBalance: number = 0;
+  private _statsManager: StatsManager | null = null;
+
+  public setStatsManager(statsManager: StatsManager): void {
+    this._statsManager = statsManager;
+  }
 
   private _challengeTemplates: Omit<DailyChallenge, 'id' | 'progress' | 'completed' | 'expiresAt'>[] = [
     {
@@ -100,6 +108,11 @@ export class DailyChallengeSystem {
         this._challenges = data.challenges || [];
         this._lastGenerated = data.lastGenerated || '';
       }
+      
+      const coins = localStorage.getItem('toiletRunner_coins');
+      if (coins) {
+        this._coinBalance = parseInt(coins, 10) || 0;
+      }
     } catch (e) {
       console.log('No challenge data found');
     }
@@ -112,6 +125,7 @@ export class DailyChallengeSystem {
         lastGenerated: this._lastGenerated
       };
       localStorage.setItem('toiletRunner_challenges', JSON.stringify(data));
+      localStorage.setItem('toiletRunner_coins', this._coinBalance.toString());
     } catch (e) {
       console.log('Failed to save challenges');
     }
@@ -161,8 +175,17 @@ export class DailyChallengeSystem {
 
       challenge.progress = Math.min(challenge.target, challenge.progress + value);
 
-      if (challenge.progress >= challenge.target) {
+      if (challenge.progress >= challenge.target && !challenge.completed) {
         challenge.completed = true;
+
+        // Award reward
+        this.updateCoinBalance(challenge.reward);
+
+        // Update stats - use shared instance instead of creating new one
+        if (this._statsManager) {
+          this._statsManager.incrementChallengesCompleted();
+        }
+
         this._saveToStorage();
       }
     }
@@ -193,5 +216,14 @@ export class DailyChallengeSystem {
       minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
       seconds: Math.floor((diff % (1000 * 60)) / 1000)
     };
+  }
+
+  public updateCoinBalance(amount: number): void {
+    this._coinBalance += amount;
+    localStorage.setItem('toiletRunner_coins', this._coinBalance.toString());
+  }
+
+  public getCoinBalance(): number {
+    return this._coinBalance;
   }
 }

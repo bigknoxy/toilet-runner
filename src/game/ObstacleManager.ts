@@ -33,6 +33,7 @@ export class ObstacleManager {
   private _activeCount = 0;
   private _spawnTimer = 0;
   private _waveCounter = 0;
+  private _dodgedCount = 0;
   private _emojiFacesEnabled: boolean = false;
   private _bodyMaterial: THREE.MeshLambertMaterial;
   private _eyeMaterial: THREE.MeshBasicMaterial;
@@ -262,6 +263,11 @@ export class ObstacleManager {
     this._activeCount--;
     obstacle.mesh.visible = false;
     obstacle.mesh.position.set(0, -100, 0);
+    
+    // Count as a dodge if the obstacle passed the player
+    if (obstacle.z > DESPAWN_DISTANCE) {
+      this._dodgedCount++;
+    }
   }
 
   private getLaneX(lane: number): number {
@@ -301,6 +307,7 @@ export class ObstacleManager {
     this._activeCount = 0;
     this._spawnTimer = 0;
     this._waveCounter = 0;
+    this._dodgedCount = 0;
     PatternSequencer.reset();
   }
 
@@ -322,7 +329,15 @@ export class ObstacleManager {
         lane: obstacle.lane
       });
     }
-    
+
     return activeObstacles;
+  }
+
+  getDodgedCount(): number {
+    return this._dodgedCount;
+  }
+
+  resetDodgedCount(): void {
+    this._dodgedCount = 0;
   }
 }

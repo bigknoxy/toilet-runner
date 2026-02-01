@@ -1,66 +1,56 @@
 import * as THREE from 'three';
 
-// Phase 3: More subtle shake for closer camera (was 0.02)
-const SHAKE_AMPLITUDE = 0.015;
-// Phase 3: Quicker shake for less disorienting feedback (was 0.08)
-const SHAKE_DURATION = 0.06;
-// Smooth damping for X-axis follow (Subway Surfers uses ~0.2-0.3s)
-const CAMERA_DAMPING = 8;
+// Smooth damping for camera follow (Higher = snappier, Lower = floatier)
+const CAMERA_DAMPING = 2.5;  // Slower, smoother camera follow
+// Camera offset constants
+const CAMERA_HEIGHT_OFFSET = 2;
+const CAMERA_Z_OFFSET = 8; // Was -5, fixed to +8 to place camera in front of player (Z=4) looking toward -Z (forward), so obstacles come from front of screen toward player
 
 export class CameraManager {
   private _camera: THREE.PerspectiveCamera;
-  private _shakeTime: number = 0;
-  private _isShaking: boolean = false;
   private _basePosition: THREE.Vector3;
-  // Target X position for smooth following
-  private _targetX: number = 0;
+  // Target position for smooth following
+  private _targetPosition: THREE.Vector3;
 
   constructor(camera: THREE.PerspectiveCamera) {
     this._camera = camera;
     // Match SceneManager: higher vantage point (Y=2.8), further from player (Z=6)
     this._basePosition = new THREE.Vector3(0, 2.8, 6);
+    this._targetPosition = new THREE.Vector3();
     this._camera.position.copy(this._basePosition);
-    this._targetX = 0;
-  }
-
-  triggerShake(): void {
-    this._shakeTime = SHAKE_DURATION;
-    this._isShaking = true;
   }
 
   update(delta: number): void {
-    // Smoothly follow player's X position (Subway Surfers lerp)
-    this._targetX = THREE.MathUtils.lerp(
-      this._camera.position.x,
-      this._basePosition.x,
-      CAMERA_DAMPING * delta
+    // No-op - CameraManager no longer handles shake directly
+    // Camera follow is handled by updateCameraFollow()
+    // Shake is handled by CameraShake system
+  }
+
+  updateCameraFollow(playerPosition: THREE.Vector3, delta: number): void {
+    // Calculate target position (behind and above player)
+    this._targetPosition.set(
+      0,  // FIXED: Camera stays centered, no X follow
+      playerPosition.y + CAMERA_HEIGHT_OFFSET,
+      playerPosition.z + CAMERA_Z_OFFSET
     );
-    this._basePosition.x = this._targetX;
-
-    if (this._isShaking) {
-      this._shakeTime -= delta;
-
-      if (this._shakeTime <= 0) {
-        this._isShaking = false;
-        this._camera.position.copy(this._basePosition);
-      } else {
-        // Phase 3: More subtle shake (amplitude 0.015), reduced vertical component (0.25 instead of 0.3)
-        const shakeX = Math.sin(this._shakeTime * 80) * SHAKE_AMPLITUDE;
-        const shakeY = Math.cos(this._shakeTime * 80) * SHAKE_AMPLITUDE * 0.25;
-        this._camera.position.x = this._basePosition.x + shakeX;
-        this._camera.position.y = this._basePosition.y + shakeY;
-        this._camera.position.z = this._basePosition.z;
-      }
-    } else {
-      // When not shaking, smoothly update position
-      this._camera.position.copy(this._basePosition);
-    }
+    
+    // Smooth lerp instead of direct assignment
+    this._basePosition.lerp(this._targetPosition, CAMERA_DAMPING * delta);
+    
+    // Look at center of track ahead
+    this._camera.lookAt(
+      0,                       // Look at center line
+      playerPosition.y + 0.5,  // Keep Y follow for height context
+      playerPosition.z - 15    // Look ahead down the track
+    );
   }
 
   reset(): void {
-    this._isShaking = false;
-    this._shakeTime = 0;
-    this._targetX = 0;
+    this._targetPosition.set(0, 0, 0);
     this._camera.position.copy(this._basePosition);
+  }
+
+  getCurrentPosition(): THREE.Vector3 {
+    return this._basePosition.clone();
   }
 }

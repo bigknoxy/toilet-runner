@@ -33,8 +33,15 @@
 }
 
 @keyframes logoBounce {
-  0%, 100% { transform: scale(1) translateY(0); }
-  50% { transform: scale(1.05) translateY(-10px); }
+
+  0%,
+  100% {
+    transform: scale(1) translateY(0);
+  }
+
+  50% {
+    transform: scale(1.05) translateY(-10px);
+  }
 }
 
 .intro-progress-container {
@@ -63,8 +70,17 @@
 }
 
 @keyframes tapPulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
 }
 
 /* Loading Screen Styles */
@@ -96,8 +112,13 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -247,19 +268,7 @@
   background: rgba(0, 0, 0, 0.7);
 }
 
-/* Score Display */
-#score {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Fredoka One', cursive;
-  font-size: 3rem;
-  color: white;
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-  z-index: 50;
-  pointer-events: none;
-}
+/* Score Display - Positioning defined in modals.css */
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
@@ -317,6 +326,10 @@
   z-index: 9999;
 }
 
+.start-screen:not(.hidden) {
+  display: flex;
+}
+
 .start-screen::before {
   content: '';
   position: absolute;
@@ -331,8 +344,15 @@
 }
 
 @keyframes backgroundPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .start-content {
@@ -359,17 +379,17 @@
 }
 
 .start-prompt {
-  font-family: 'Fredoka One', cursive;
-  font-size: 1.3rem;
-  color: rgba(255, 255, 255, 0.9);
-  animation: promptPulse 2s ease-in-out infinite;
+  display: none;
 }
 
 @keyframes promptPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.7;
     transform: scale(1);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.03);
@@ -387,14 +407,77 @@
 }
 
 @keyframes dotPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
     box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
   }
+
   50% {
     opacity: 0.8;
     transform: scale(1.2);
     box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+  }
+}
+
+/* Play Button - Primary Action */
+.play-button-container {
+  margin-bottom: var(--spacing-xl);
+}
+
+.btn-play {
+  min-height: 72px;
+  min-width: 180px;
+  padding: 16px 48px;
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  box-shadow: 0 8px 24px rgba(135, 206, 235, 0.5);
+  animation: playButtonPulse 2s ease-in-out infinite;
+}
+
+.btn-play:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 32px rgba(135, 206, 235, 0.6);
+}
+
+.btn-play:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.btn-play .play-icon {
+  font-size: 28px;
+}
+
+.btn-play .play-text {
+  font-family: 'Fredoka One', cursive;
+  letter-spacing: 2px;
+}
+
+@keyframes playButtonPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 8px 24px rgba(135, 206, 235, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 8px 32px rgba(135, 206, 235, 0.8);
+  }
+}
+
+/* Responsive Play Button */
+@media (max-width: 479px) {
+  .btn-play {
+    min-height: 64px;
+    min-width: 140px;
+    padding: 14px 32px;
+    font-size: 20px;
+  }
+
+  .btn-play .play-icon {
+    font-size: 24px;
   }
 }

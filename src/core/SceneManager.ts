@@ -8,6 +8,7 @@ export class SceneManager {
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private postProcessing: PostProcessingManager | null = null;
+  private sky: THREE.Mesh | null = null;
 
   constructor() {
     this.scene = this.createScene();
@@ -18,14 +19,21 @@ export class SceneManager {
 
   private createScene(): THREE.Scene {
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0xE0F7FA, 0.012);
+    const fogColor = 0xffffff;
+    scene.background = null;
+    scene.fog = new THREE.Fog(fogColor, 20, 60);
+    this.createSky(scene);
     return scene;
   }
 
   private createCamera(): THREE.PerspectiveCamera {
     const aspect = window.innerWidth / window.innerHeight;
-    // Natural FOV (60°) for less distortion, better aesthetics
-    const camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 200);
+    
+    // Wider FOV on mobile for better lane visibility
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    const fov = isMobile ? 75 : 60; // 75° on mobile, 60° on desktop
+    
+    const camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 200);
     // Higher camera vantage point (Y=2.8) to look down on player, further Z (6) for better world visibility
     camera.position.set(0, 2.8, 6);
     // Look higher above player (Y=2.5) to push player into lower third, 30 units ahead for obstacle preview
@@ -34,11 +42,14 @@ export class SceneManager {
   }
 
   private createRenderer(): THREE.WebGLRenderer {
+    const fogColor = 0xffffff;
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
-      alpha: true
+      alpha: true,
+      clearColor: fogColor
     });
+    renderer.setClearColor(fogColor, 1);
 
     const pixelRatio = Math.min(window.devicePixelRatio, PIXEL_RATIO_MAX);
     renderer.setPixelRatio(pixelRatio);
@@ -69,8 +80,45 @@ export class SceneManager {
     directionalLight.shadow.camera.bottom = -10;
     this.scene.add(directionalLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x362d1d, 0.3);
+    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x362d1d, 0.3);
     this.scene.add(hemiLight);
+  }
+
+  private createSky(scene: THREE.Scene): void {
+    const skyGeometry = new THREE.SphereGeometry(100, 32, 32);
+    const skyMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: new THREE.Color(0x0077ff) },
+        bottomColor: { value: new THREE.Color(0xffffff) },
+        offset: { value: 33 },
+        exponent: { value: 0.6 }
+      },
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        
+        void main() {
+          vWorldPosition = modelMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * viewMatrix * vWorldPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPosition;
+        
+        void main() {
+          float h = normalize(vWorldPosition + vec3(0, offset, 0)).y;
+          vec3 color = mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0));
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+      side: THREE.BackSide
+    });
+
+    this.sky = new THREE.Mesh(skyGeometry, skyMaterial);
+    scene.add(this.sky);
   }
 
   setPostProcessing(postProcessing: PostProcessingManager): void {

@@ -139,54 +139,8 @@
   }
 }
 
-/* Modal overlay improvements */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: none;
-  justify-content: center;
-  align-items: center;
-  z-index: 9998;
-  backdrop-filter: blur(5px);
-  transition: backdrop-filter 0.3s ease;
-}
-
-.modal-overlay.visible {
-  display: flex;
-}
-
-.modal-overlay.blur-active {
-  backdrop-filter: blur(10px);
-}
-
-/* Modal content improvements */
-.modal-content {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  border-radius: 20px;
-  padding: 2rem;
-  text-align: center;
-  color: white;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  max-width: 90%;
-  width: 400px;
-  animation: modalEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes modalEnter {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
+/* Modal overlay improvements - MOVED to modals.css to prevent conflicts */
+/* .modal-content styles are now only in modals.css to avoid conflicts */
 
 .modal-header h1 {
   font-family: 'Fredoka One', cursive;
@@ -334,10 +288,7 @@ h1, h2, h3 {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .modal-content {
-    padding: 1.5rem;
-    margin: 1rem;
-  }
+  /* .modal-content responsive styles are now in modals.css */
 
   .modal-header h1 {
     font-size: 1.5rem;

@@ -8,18 +8,6 @@ export interface CharacterSkin {
   description: string;
 }
 
-export interface PlayerStats {
-  totalRuns: number;
-  highestScore: number;
-  totalDistance: number;
-  totalObstaclesDodged: number;
-  perfectLaneChanges: number;
-  longestRun: number;
-  currentStreak: number;
-  skinsUnlocked: string[];
-  challengesCompleted: number;
-}
-
 export class CharacterCustomization {
   private _skins: CharacterSkin[] = [
     {
@@ -93,110 +81,37 @@ export class CharacterCustomization {
     }
   ];
 
-  private _selectedSkin: string = 'classic';
-  private _unlockedSkins: Set<string> = new Set(['classic']);
-  private _stats: PlayerStats = {
-    totalRuns: 0,
-    highestScore: 0,
-    totalDistance: 0,
-    totalObstaclesDodged: 0,
-    perfectLaneChanges: 0,
-    longestRun: 0,
-    currentStreak: 0,
-    skinsUnlocked: ['classic'],
-    challengesCompleted: 0
-  };
+  private _statsManager: any = null;
 
   constructor() {
-    this._loadFromStorage();
+    this._initializeSkins();
   }
 
-  private _loadFromStorage(): void {
-    try {
-      const saved = localStorage.getItem('toiletRunner_data');
-      if (saved) {
-        const data = JSON.parse(saved);
-        this._selectedSkin = data.selectedSkin || 'classic';
-        this._unlockedSkins = new Set(data.unlockedSkins || ['classic']);
-        this._stats = { ...this._stats, ...data.stats };
-      }
-    } catch (e) {
-      console.log('No save data found, using defaults');
-    }
+  public setStatsManager(statsManager: any): void {
+    this._statsManager = statsManager;
   }
 
-  private _saveToStorage(): void {
-    try {
-      const data = {
-        selectedSkin: this._selectedSkin,
-        unlockedSkins: Array.from(this._unlockedSkins),
-        stats: this._stats
-      };
-      localStorage.setItem('toiletRunner_data', JSON.stringify(data));
-    } catch (e) {
-      console.log('Failed to save data');
-    }
+  private _initializeSkins(): void {
+    // Skins are already initialized above
   }
 
   getSkins(): CharacterSkin[] {
     return this._skins;
   }
 
+  getSelectedSkinId(): string {
+    if (!this._statsManager) {
+      return 'classic';
+    }
+    return this._statsManager.getSelectedSkin();
+  }
+
   getSelectedSkin(): CharacterSkin | undefined {
-    return this._skins.find(s => s.id === this._selectedSkin);
-  }
-
-  getUnlockedSkins(): string[] {
-    return Array.from(this._unlockedSkins);
-  }
-
-  isSkinUnlocked(skinId: string): boolean {
-    return this._unlockedSkins.has(skinId);
-  }
-
-  selectSkin(skinId: string): boolean {
-    if (this._unlockedSkins.has(skinId)) {
-      this._selectedSkin = skinId;
-      this._saveToStorage();
-      return true;
+    if (!this._statsManager) {
+      return undefined;
     }
-    return false;
-  }
-
-  unlockSkin(skinId: string): void {
-    if (!this._unlockedSkins.has(skinId)) {
-      this._unlockedSkins.add(skinId);
-      this._stats.skinsUnlocked.push(skinId);
-      this._saveToStorage();
-    }
-  }
-
-  getUnlockProgress(skinId: string): { current: number; required: number; percent: number } {
-    const skin = this._skins.find(s => s.id === skinId);
-    if (!skin) return { current: 0, required: 0, percent: 100 };
-
-    const current = this._stats.highestScore;
-    const required = skin.unlockScore;
-    const percent = Math.min(100, (current / required) * 100);
-
-    return { current, required, percent };
-  }
-
-  updateStats(updates: Partial<PlayerStats>): void {
-    this._stats = { ...this._stats, ...updates };
-
-    // Check for new skin unlocks
-    for (const skin of this._skins) {
-      if (!this._unlockedSkins.has(skin.id) && this._stats.highestScore >= skin.unlockScore) {
-        this.unlockSkin(skin.id);
-      }
-    }
-
-    this._saveToStorage();
-  }
-
-  getStats(): PlayerStats {
-    return { ...this._stats };
+    const selectedSkinId = this._statsManager.getSelectedSkin();
+    return this._skins.find(s => s.id === selectedSkinId);
   }
 
   getSkinColor(skinId: string): number | string {
@@ -212,20 +127,24 @@ export class CharacterCustomization {
     return undefined;
   }
 
-  resetProgress(): void {
-    this._unlockedSkins = new Set(['classic']);
-    this._selectedSkin = 'classic';
-    this._stats = {
-      totalRuns: 0,
-      highestScore: 0,
-      totalDistance: 0,
-      totalObstaclesDodged: 0,
-      perfectLaneChanges: 0,
-      longestRun: 0,
-      currentStreak: 0,
-      skinsUnlocked: ['classic'],
-      challengesCompleted: 0
-    };
-    this._saveToStorage();
+  isSkinUnlocked(skinId: string): boolean {
+    if (!this._statsManager) {
+      return false;
+    }
+    return this._statsManager.isSkinUnlocked(skinId);
+  }
+
+  // Helper method to update stats and check for skin unlocks
+  updateStats(highestScore: number): { newlyUnlocked: string[] } {
+    const newlyUnlocked: string[] = [];
+
+    // Check for new skin unlocks
+    for (const skin of this._skins) {
+      if (highestScore >= skin.unlockScore) {
+        newlyUnlocked.push(skin.id);
+      }
+    }
+
+    return { newlyUnlocked };
   }
 }

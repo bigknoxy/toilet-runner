@@ -75,6 +75,9 @@ export class PerformanceManager {
     renderer.dispose();
     geometry.dispose();
     material.dispose();
+    mesh.removeFromParent();
+    scene.remove(mesh);
+    canvas.remove();
 
     return score;
   }
