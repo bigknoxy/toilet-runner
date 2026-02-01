@@ -3,5 +3,10 @@ export enum GameState {
   PLAYING,
   PAUSED,
   GAMEOVER,
-  LEADERBOARD
+  LEADERBOARD,
+  SKINS,
+  CHALLENGES,
+  STATS
 }
+
+export type GameStateValue = `${GameState}`;

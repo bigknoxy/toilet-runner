@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 import { TrackManager } from './TrackManager';
+import { EmojiTextureAtlas } from './visual/EmojiTextureAtlas';
+import { PatternPool } from './ObstaclePattern.js';
+import { PatternSequencer } from './PatternSequencer.js';
+import { DifficultyManager } from './DifficultyManager.js';
+import { CONFIG } from '../core/GameConfig.js';
 
 const LANE_WIDTH = 3;
 const SEGMENT_LENGTH = 10;
@@ -16,6 +21,9 @@ interface ObstacleInstance {
   speedVariation: number;
   scale: number;
   rotationY: number;
+  emojiIndex?: number;
+  wobbleTime: number;  // For animation
+  rotationSpeed: number;  // For spinning obstacles
 }
 
 export class ObstacleManager {
@@ -25,18 +33,36 @@ export class ObstacleManager {
   private _activeCount = 0;
   private _spawnTimer = 0;
   private _waveCounter = 0;
-  private _currentWaveMode: 'easy' | 'medium' | 'hard' = 'easy';
-  
+  private _dodgedCount = 0;
+  private _emojiFacesEnabled: boolean = false;
   private _bodyMaterial: THREE.MeshLambertMaterial;
   private _eyeMaterial: THREE.MeshBasicMaterial;
+  private _faceGeometry?: THREE.PlaneGeometry;
+  private _faceMaterial?: THREE.MeshBasicMaterial;
   private _bodyGeometry: THREE.SphereGeometry;
   private _tipGeometry: THREE.ConeGeometry;
   private _eyeGeometry: THREE.SphereGeometry;
   private _smileGeometry: THREE.TorusGeometry;
 
-  constructor(scene: THREE.Scene, trackManager: TrackManager) {
+  constructor(scene: THREE.Scene, trackManager: TrackManager, emojiFacesEnabled: boolean = true) {
     this._scene = scene;
     this._trackManager = trackManager;
+    this._emojiFacesEnabled = emojiFacesEnabled;
+
+    PatternPool.initialize();
+    PatternSequencer.initialize();
+
+    // Initialize emoji atlas if enabled
+    if (this._emojiFacesEnabled) {
+      EmojiTextureAtlas.initialize();
+      this._faceGeometry = new THREE.PlaneGeometry(0.6, 0.6);
+      this._faceMaterial = new THREE.MeshBasicMaterial({
+        map: EmojiTextureAtlas.getTexture(),
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthTest: false
+      });
+    }
 
     // Materials
     this._bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x6B4423 });
@@ -57,14 +83,14 @@ export class ObstacleManager {
 
   private createObstacleGroup(): THREE.Group {
     const group = new THREE.Group();
-
+    
     // Body (casts shadows)
     const body = new THREE.Mesh(this._bodyGeometry, this._bodyMaterial);
     body.position.set(0, 0.3, 0);
     body.castShadow = true;
     body.receiveShadow = true;
     group.add(body);
-
+    
     // Tip (casts shadows)
     const tip = new THREE.Mesh(this._tipGeometry, this._bodyMaterial);
     tip.rotation.x = -Math.PI / 2;
@@ -72,28 +98,38 @@ export class ObstacleManager {
     tip.castShadow = true;
     tip.receiveShadow = true;
     group.add(tip);
-
-    // Eyes (no shadows - optimization)
-    const leftEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
-    leftEye.position.set(-0.22, 0.65, 0.55);
-    leftEye.castShadow = false;
-    leftEye.receiveShadow = false;
-    group.add(leftEye);
-
-    const rightEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
-    rightEye.position.set(0.22, 0.65, 0.55);
-    rightEye.castShadow = false;
-    rightEye.receiveShadow = false;
-    group.add(rightEye);
-
-    // Smile (no shadows - optimization)
-    const smile = new THREE.Mesh(this._smileGeometry, this._eyeMaterial);
-    smile.position.set(0, 0.45, 0.65);
-    smile.rotation.x = Math.PI / 4;
-    smile.castShadow = false;
-    smile.receiveShadow = false;
-    group.add(smile);
-
+    
+    // Emoji face (if enabled, replaces eyes/smile)
+    if (this._emojiFacesEnabled && this._faceGeometry && this._faceMaterial) {
+      const face = new THREE.Mesh(this._faceGeometry, this._faceMaterial);
+      face.position.set(0, 0.65, 0.6);
+      face.castShadow = false;
+      face.receiveShadow = false;
+      face.userData.emojiIndex = Math.floor(Math.random() * 5);
+      group.add(face);
+    } else {
+      // Eyes (no shadows - optimization)
+      const leftEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
+      leftEye.position.set(-0.22, 0.65, 0.55);
+      leftEye.castShadow = false;
+      leftEye.receiveShadow = false;
+      group.add(leftEye);
+      
+      const rightEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
+      rightEye.position.set(0.22, 0.65, 0.55);
+      rightEye.castShadow = false;
+      rightEye.receiveShadow = false;
+      group.add(rightEye);
+      
+      // Smile (no shadows - optimization)
+      const smile = new THREE.Mesh(this._smileGeometry, this._eyeMaterial);
+      smile.position.set(0, 0.45, 0.65);
+      smile.rotation.x = Math.PI / 4;
+      smile.castShadow = false;
+      smile.receiveShadow = false;
+      group.add(smile);
+    }
+    
     return group;
   }
 
@@ -110,26 +146,26 @@ export class ObstacleManager {
         lane: 0,
         speedVariation: 1,
         scale: 1,
-        rotationY: 0
+        rotationY: 0,
+        wobbleTime: Math.random() * Math.PI * 2,  // Random start for varied animation
+        rotationSpeed: 0  // Default no rotation
       });
     }
   }
 
   update(delta: number, speed: number, score: number): void {
     this._spawnTimer -= delta;
-    
-    const currentSpawnRate = Math.max(0.5, SPAWN_RATE_BASE - (score * DIFFICULTY_MULTIPLIER));
+    PatternSequencer.setScore(score);
+
+    const spawnRate = DifficultyManager.getSpawnRate(score);
 
     if (this._spawnTimer <= 0) {
-      this.spawnObstaclePattern();
-      this._spawnTimer = currentSpawnRate;
+      this.spawnPatternObstacles();
+      this._spawnTimer = spawnRate / 60;
       this._waveCounter++;
-      
-      if (this._waveCounter >= 10) {
-        this._waveCounter = 0;
-        this.updateWaveMode();
-      }
     }
+
+    const time = Date.now() * 0.001;  // Global time for animations
 
     for (const obstacle of this._obstacles) {
       if (!obstacle.active) continue;
@@ -137,9 +173,21 @@ export class ObstacleManager {
       const moveSpeed = speed * obstacle.speedVariation;
       obstacle.z += moveSpeed * delta;
 
+      // Update wobble animation
+      obstacle.wobbleTime += delta * 3;
+
       const laneX = this.getLaneX(obstacle.lane);
       obstacle.mesh.position.set(laneX, 0, obstacle.z);
-      obstacle.mesh.rotation.y = obstacle.rotationY;
+
+      // Apply wobble rotation for "alive" feeling
+      const wobble = Math.sin(obstacle.wobbleTime) * 0.1;
+      obstacle.mesh.rotation.y = obstacle.rotationY + wobble;
+
+      // Apply subtle rotation for spinning obstacles
+      if (obstacle.rotationSpeed > 0) {
+        obstacle.mesh.rotation.y += obstacle.rotationSpeed * delta;
+      }
+
       obstacle.mesh.scale.setScalar(obstacle.scale);
 
       if (obstacle.z > DESPAWN_DISTANCE) {
@@ -148,34 +196,14 @@ export class ObstacleManager {
     }
   }
 
-  private updateWaveMode(): void {
-    const modeRoll = Math.random();
-    if (modeRoll < 0.5) {
-      this._currentWaveMode = 'easy';
-    } else if (modeRoll < 0.8) {
-      this._currentWaveMode = 'medium';
-    } else {
-      this._currentWaveMode = 'hard';
-    }
-  }
+  private spawnPatternObstacles(): void {
+    const pattern = PatternSequencer.getNextPattern();
 
-  private spawnObstaclePattern(): void {
-    const clearLane = this.getWeightedRandomLane([0.4, 0.3, 0.3]);
-    
-    let patternThreshold = 0.7;
-    if (this._currentWaveMode === 'easy') patternThreshold = 0.8;
-    else if (this._currentWaveMode === 'medium') patternThreshold = 0.7;
-    else if (this._currentWaveMode === 'hard') patternThreshold = 0.5;
-
-    const pattern = Math.random();
-
-    if (pattern < patternThreshold) {
-      const availableLanes = [0, 1, 2].filter(l => l !== clearLane);
-      const lane = availableLanes[Math.floor(Math.random() * availableLanes.length)];
-      this.spawnObstacle(lane);
-    } else {
-      const doubleLanes = this.getAdjacentLanes(clearLane);
-      doubleLanes.forEach(lane => this.spawnObstacle(lane));
+    for (const obstacleConfig of pattern.obstacles) {
+      this.spawnObstacle(
+        obstacleConfig.lane,
+        obstacleConfig.speedMultiplier
+      );
     }
   }
 
@@ -199,7 +227,7 @@ export class ObstacleManager {
     return [1, 2];
   }
 
-  private spawnObstacle(lane: number): void {
+  private spawnObstacle(lane: number, speedMultiplier: number = 1.0): void {
     const inactiveObstacle = this._obstacles.find(obs => !obs.active);
     if (!inactiveObstacle) return;
 
@@ -208,9 +236,20 @@ export class ObstacleManager {
     inactiveObstacle.active = true;
     inactiveObstacle.lane = lane;
     inactiveObstacle.z = spawnZ;
-    inactiveObstacle.speedVariation = 0.85 + Math.random() * 0.3;
+    inactiveObstacle.speedVariation = speedMultiplier;
     inactiveObstacle.scale = 0.9 + Math.random() * 0.2;
     inactiveObstacle.rotationY = (Math.random() - 0.5) * 0.5;
+    inactiveObstacle.emojiIndex = Math.floor(Math.random() * 5);
+
+    // Update emoji face UVs if enabled
+    if (this._emojiFacesEnabled && this._faceGeometry) {
+      const uvs = EmojiTextureAtlas.getUVs(inactiveObstacle.emojiIndex);
+      this._faceGeometry.attributes.uv.setXY(0, uvs[0].x, uvs[0].y);
+      this._faceGeometry.attributes.uv.setXY(1, uvs[1].x, uvs[1].y);
+      this._faceGeometry.attributes.uv.setXY(2, uvs[2].x, uvs[2].y);
+      this._faceGeometry.attributes.uv.setXY(3, uvs[3].x, uvs[3].y);
+      this._faceGeometry.attributes.uv.needsUpdate = true;
+    }
 
     const laneX = this.getLaneX(lane);
     inactiveObstacle.mesh.position.set(laneX, 0, spawnZ);
@@ -224,6 +263,11 @@ export class ObstacleManager {
     this._activeCount--;
     obstacle.mesh.visible = false;
     obstacle.mesh.position.set(0, -100, 0);
+    
+    // Count as a dodge if the obstacle passed the player
+    if (obstacle.z > DESPAWN_DISTANCE) {
+      this._dodgedCount++;
+    }
   }
 
   private getLaneX(lane: number): number {
@@ -263,7 +307,8 @@ export class ObstacleManager {
     this._activeCount = 0;
     this._spawnTimer = 0;
     this._waveCounter = 0;
-    this._currentWaveMode = 'easy';
+    this._dodgedCount = 0;
+    PatternSequencer.reset();
   }
 
   getActiveCount(): number {
@@ -284,7 +329,15 @@ export class ObstacleManager {
         lane: obstacle.lane
       });
     }
-    
+
     return activeObstacles;
+  }
+
+  getDodgedCount(): number {
+    return this._dodgedCount;
+  }
+
+  resetDodgedCount(): void {
+    this._dodgedCount = 0;
   }
 }
