@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { TrackManager } from './TrackManager';
 import { EmojiTextureAtlas } from './visual/EmojiTextureAtlas';
+import { PatternPool } from './ObstaclePattern.js';
+import { PatternSequencer } from './PatternSequencer.js';
+import { DifficultyManager } from './DifficultyManager.js';
+import { CONFIG } from '../core/GameConfig.js';
 
 const LANE_WIDTH = 3;
 const SEGMENT_LENGTH = 10;
@@ -18,6 +22,8 @@ interface ObstacleInstance {
   scale: number;
   rotationY: number;
   emojiIndex?: number;
+  wobbleTime: number;  // For animation
+  rotationSpeed: number;  // For spinning obstacles
 }
 
 export class ObstacleManager {
@@ -27,7 +33,7 @@ export class ObstacleManager {
   private _activeCount = 0;
   private _spawnTimer = 0;
   private _waveCounter = 0;
-  private _currentWaveMode: 'easy' | 'medium' | 'hard' = 'easy';
+  private _dodgedCount = 0;
   private _emojiFacesEnabled: boolean = false;
   private _bodyMaterial: THREE.MeshLambertMaterial;
   private _eyeMaterial: THREE.MeshBasicMaterial;
@@ -42,6 +48,9 @@ export class ObstacleManager {
     this._scene = scene;
     this._trackManager = trackManager;
     this._emojiFacesEnabled = emojiFacesEnabled;
+
+    PatternPool.initialize();
+    PatternSequencer.initialize();
 
     // Initialize emoji atlas if enabled
     if (this._emojiFacesEnabled) {
@@ -137,26 +146,26 @@ export class ObstacleManager {
         lane: 0,
         speedVariation: 1,
         scale: 1,
-        rotationY: 0
+        rotationY: 0,
+        wobbleTime: Math.random() * Math.PI * 2,  // Random start for varied animation
+        rotationSpeed: 0  // Default no rotation
       });
     }
   }
 
   update(delta: number, speed: number, score: number): void {
     this._spawnTimer -= delta;
-    
-    const currentSpawnRate = Math.max(0.5, SPAWN_RATE_BASE - (score * DIFFICULTY_MULTIPLIER));
+    PatternSequencer.setScore(score);
+
+    const spawnRate = DifficultyManager.getSpawnRate(score);
 
     if (this._spawnTimer <= 0) {
-      this.spawnObstaclePattern();
-      this._spawnTimer = currentSpawnRate;
+      this.spawnPatternObstacles();
+      this._spawnTimer = spawnRate / 60;
       this._waveCounter++;
-      
-      if (this._waveCounter >= 10) {
-        this._waveCounter = 0;
-        this.updateWaveMode();
-      }
     }
+
+    const time = Date.now() * 0.001;  // Global time for animations
 
     for (const obstacle of this._obstacles) {
       if (!obstacle.active) continue;
@@ -164,9 +173,21 @@ export class ObstacleManager {
       const moveSpeed = speed * obstacle.speedVariation;
       obstacle.z += moveSpeed * delta;
 
+      // Update wobble animation
+      obstacle.wobbleTime += delta * 3;
+
       const laneX = this.getLaneX(obstacle.lane);
       obstacle.mesh.position.set(laneX, 0, obstacle.z);
-      obstacle.mesh.rotation.y = obstacle.rotationY;
+
+      // Apply wobble rotation for "alive" feeling
+      const wobble = Math.sin(obstacle.wobbleTime) * 0.1;
+      obstacle.mesh.rotation.y = obstacle.rotationY + wobble;
+
+      // Apply subtle rotation for spinning obstacles
+      if (obstacle.rotationSpeed > 0) {
+        obstacle.mesh.rotation.y += obstacle.rotationSpeed * delta;
+      }
+
       obstacle.mesh.scale.setScalar(obstacle.scale);
 
       if (obstacle.z > DESPAWN_DISTANCE) {
@@ -175,34 +196,14 @@ export class ObstacleManager {
     }
   }
 
-  private updateWaveMode(): void {
-    const modeRoll = Math.random();
-    if (modeRoll < 0.5) {
-      this._currentWaveMode = 'easy';
-    } else if (modeRoll < 0.8) {
-      this._currentWaveMode = 'medium';
-    } else {
-      this._currentWaveMode = 'hard';
-    }
-  }
+  private spawnPatternObstacles(): void {
+    const pattern = PatternSequencer.getNextPattern();
 
-  private spawnObstaclePattern(): void {
-    const clearLane = this.getWeightedRandomLane([0.4, 0.3, 0.3]);
-    
-    let patternThreshold = 0.7;
-    if (this._currentWaveMode === 'easy') patternThreshold = 0.8;
-    else if (this._currentWaveMode === 'medium') patternThreshold = 0.7;
-    else if (this._currentWaveMode === 'hard') patternThreshold = 0.5;
-
-    const pattern = Math.random();
-
-    if (pattern < patternThreshold) {
-      const availableLanes = [0, 1, 2].filter(l => l !== clearLane);
-      const lane = availableLanes[Math.floor(Math.random() * availableLanes.length)];
-      this.spawnObstacle(lane);
-    } else {
-      const doubleLanes = this.getAdjacentLanes(clearLane);
-      doubleLanes.forEach(lane => this.spawnObstacle(lane));
+    for (const obstacleConfig of pattern.obstacles) {
+      this.spawnObstacle(
+        obstacleConfig.lane,
+        obstacleConfig.speedMultiplier
+      );
     }
   }
 
@@ -226,20 +227,20 @@ export class ObstacleManager {
     return [1, 2];
   }
 
-  private spawnObstacle(lane: number): void {
+  private spawnObstacle(lane: number, speedMultiplier: number = 1.0): void {
     const inactiveObstacle = this._obstacles.find(obs => !obs.active);
     if (!inactiveObstacle) return;
 
     const spawnZ = this._trackManager.getFrontZ() - SEGMENT_LENGTH;
-    
+
     inactiveObstacle.active = true;
     inactiveObstacle.lane = lane;
     inactiveObstacle.z = spawnZ;
-    inactiveObstacle.speedVariation = 0.85 + Math.random() * 0.3;
+    inactiveObstacle.speedVariation = speedMultiplier;
     inactiveObstacle.scale = 0.9 + Math.random() * 0.2;
     inactiveObstacle.rotationY = (Math.random() - 0.5) * 0.5;
     inactiveObstacle.emojiIndex = Math.floor(Math.random() * 5);
-    
+
     // Update emoji face UVs if enabled
     if (this._emojiFacesEnabled && this._faceGeometry) {
       const uvs = EmojiTextureAtlas.getUVs(inactiveObstacle.emojiIndex);
@@ -249,7 +250,7 @@ export class ObstacleManager {
       this._faceGeometry.attributes.uv.setXY(3, uvs[3].x, uvs[3].y);
       this._faceGeometry.attributes.uv.needsUpdate = true;
     }
-    
+
     const laneX = this.getLaneX(lane);
     inactiveObstacle.mesh.position.set(laneX, 0, spawnZ);
     inactiveObstacle.mesh.rotation.y = inactiveObstacle.rotationY;
@@ -262,6 +263,11 @@ export class ObstacleManager {
     this._activeCount--;
     obstacle.mesh.visible = false;
     obstacle.mesh.position.set(0, -100, 0);
+    
+    // Count as a dodge if the obstacle passed the player
+    if (obstacle.z > DESPAWN_DISTANCE) {
+      this._dodgedCount++;
+    }
   }
 
   private getLaneX(lane: number): number {
@@ -301,7 +307,8 @@ export class ObstacleManager {
     this._activeCount = 0;
     this._spawnTimer = 0;
     this._waveCounter = 0;
-    this._currentWaveMode = 'easy';
+    this._dodgedCount = 0;
+    PatternSequencer.reset();
   }
 
   getActiveCount(): number {
@@ -322,7 +329,15 @@ export class ObstacleManager {
         lane: obstacle.lane
       });
     }
-    
+
     return activeObstacles;
+  }
+
+  getDodgedCount(): number {
+    return this._dodgedCount;
+  }
+
+  resetDodgedCount(): void {
+    this._dodgedCount = 0;
   }
 }

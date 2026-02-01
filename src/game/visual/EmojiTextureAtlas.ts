@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CONFIG } from '../../core/GameConfig.js';
 
 export interface EmojiConfig {
   emoji: string;
@@ -54,15 +55,25 @@ export class EmojiTextureAtlas {
     );
     ctx.fill();
 
-    ctx.font = `${this.EMOJI_SIZE * 0.6}px Arial`;
+    ctx.font = `${this.EMOJI_SIZE * 0.6}px ${CONFIG.emojis.fontChain}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#000000';
-    ctx.fillText(
-      config.emoji,
-      x + this.EMOJI_SIZE / 2,
-      y + this.EMOJI_SIZE / 2
-    );
+
+    if (CONFIG.emojis.fallbackMode) {
+      const fallbackChar = CONFIG.emojis.fallbackCharacters[index % CONFIG.emojis.fallbackCharacters.length];
+      ctx.fillText(
+        fallbackChar,
+        x + this.EMOJI_SIZE / 2,
+        y + this.EMOJI_SIZE / 2
+      );
+    } else {
+      ctx.fillText(
+        config.emoji,
+        x + this.EMOJI_SIZE / 2,
+        y + this.EMOJI_SIZE / 2
+      );
+    }
   }
 
   static getTexture(): THREE.CanvasTexture {

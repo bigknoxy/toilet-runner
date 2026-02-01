@@ -18,13 +18,25 @@ export class CollisionSystem {
 
     // Get active obstacles from obstacle manager
     const activeObstacles = obstacleManager.getActiveObstacles();
+    
+    // DEBUG: Log obstacle positions to see if they're actually in play area
+    if (Math.random() < 0.05) {
+      console.log('[COLLISION] Active obstacles:', activeObstacles.length);
+      activeObstacles.forEach((obs, i) => {
+        console.log(`[COLLISION] Obstacle ${i}: pos=(${obs.x.toFixed(2)}, ${obs.y.toFixed(2)}, ${obs.z.toFixed(2)})`);
+      });
+      console.log('[COLLISION] Player pos:', playerMesh.position);
+    }
 
     // Check collision with each active obstacle
     for (const obstacle of activeObstacles) {
-      // Set obstacle bounding box from position and geometry
+      // Set obstacle bounding box with actual size (based on poop obstacle geometry)
+      // Body is ~1.4 wide, total height ~1.6 with tip, depth ~1.4
+      // Reduced width to 1.0 for +50% wider gaps (0.6 units vs 0.4 before)
+      // Player width: 1.6, Obstacle width: 1.0 = 0.6 unit gap (37.5% of player)
       this._obstacleBox.setFromCenterAndSize(
         new THREE.Vector3(obstacle.x, obstacle.y, obstacle.z),
-        new THREE.Vector3(2, 2, 2)
+        new THREE.Vector3(1.0, 1.6, 1.4)
       );
 
       // Add tolerance to make collision more forgiving
@@ -37,6 +49,12 @@ export class CollisionSystem {
 
       // Check intersection
       if (this._playerBox.intersectsBox(this._obstacleBox)) {
+        console.log('[COLLISION] ==================== COLLISION DETECTED ====================');
+        console.log('[COLLISION] Player position:', playerMesh.position);
+        console.log('[COLLISION] Player box:', this._playerBox.min, 'to', this._playerBox.max);
+        console.log('[COLLISION] Obstacle box:', this._obstacleBox.min, 'to', this._obstacleBox.max);
+        console.log('[COLLISION] Obstacle position:', obstacle.x, obstacle.y, obstacle.z);
+        console.log('[COLLISION] Distance between player and obstacle:', playerMesh.position.distanceTo(new THREE.Vector3(obstacle.x, obstacle.y, obstacle.z)));
         return true; // Collision detected
       }
     }

@@ -1,0 +1,248 @@
+/* Loading Screen Styles - Enhanced */
+/*
+ * Z-INDEX FIX: Must be higher than modal-overlay (100) to ensure loading
+ * screen is visible above start screen. Loading screen uses z-index: 200
+ * to display branding while initialization completes.
+ */
+.loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  color: #fff;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+}
+
+.loading-screen:not(.hidden) {
+  display: flex;
+}
+
+.loading-screen.hidden {
+  display: none;
+}
+
+.loading-screen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%);
+  animation: backgroundPulse 4s ease-in-out infinite;
+}
+
+@keyframes backgroundPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.loading-content {
+  text-align: center;
+  color: white;
+  z-index: 1;
+  position: relative;
+}
+
+.loading-spinner {
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.tp-spinner {
+  font-size: 5rem;
+  display: inline-block;
+  animation: spin 2s linear infinite, wobble 0.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+}
+
+@keyframes wobble {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.loading-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top: 3px solid #FF6B6B;
+  border-radius: 50%;
+  animation: spinRing 1s linear infinite;
+}
+
+@keyframes spinRing {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.loading-text {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.loading-logo {
+  font-family: 'Fredoka One', cursive;
+  font-size: 2.5rem;
+  color: white;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  animation: logoWobble 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes logoWobble {
+  from { transform: rotate(-3deg); }
+  to { transform: rotate(3deg); }
+}
+
+.loading-message {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 1rem;
+  font-family: var(--font-family);
+}
+
+.loading-progress {
+  width: 280px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0 auto 1.5rem;
+  position: relative;
+}
+
+.loading-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A, #4CAF50);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+  animation: progressGradient 2s linear infinite;
+}
+
+@keyframes progressGradient {
+  from { background-position: 0% 0%; }
+  to { background-position: 200% 0%; }
+}
+
+.loading-percentage {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 0.5rem;
+}
+
+.loading-tip {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 320px;
+  line-height: 1.6;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  margin-top: 1rem;
+  transition: opacity 0.3s ease;
+}
+
+/* Particle effects for loading */
+.loading-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.loading-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  animation: floatUp 3s ease-in infinite;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .loading-text {
+    font-size: 1.4rem;
+  }
+
+  .tp-spinner {
+    font-size: 3.5rem;
+  }
+
+  .loading-progress {
+    width: 80%;
+    max-width: 220px;
+  }
+
+  .loading-tip {
+    font-size: 0.85rem;
+    max-width: 280px;
+  }
+
+  .loading-logo {
+    font-size: 2rem;
+  }
+}
+
+/* Fade transition for loading screen */
+.loading-screen.fade-out {
+  animation: loadingFadeOut 0.8s ease-out forwards;
+}
+
+.loading-screen.hidden {
+  display: none !important;
+}
+
+@keyframes loadingFadeOut {
+  from {
+    opacity: 1;
+    visibility: visible;
+    display: flex;
+  }
+  to {
+    opacity: 0;
+    visibility: hidden;
+    display: none;
+  }
+}

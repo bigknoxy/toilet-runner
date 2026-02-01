@@ -1,45 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="description" content="A 3D endless runner game where you dodge poop obstacles as a toilet paper roll!">
   <title>Toilet Runner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Color+Emoji&family=Poppins:wght@600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/styles/base.css">
+  <link rel="stylesheet" href="/styles/intro.css">
+  <link rel="stylesheet" href="/styles/loading.css">
+  <link rel="stylesheet" href="/styles/transitions.css">
+  <link rel="stylesheet" href="/styles/modals.css">
 </head>
+
 <body>
   <div id="canvas"></div>
-  <div id="score">0</div>
-  
-  <!-- Pause Button -->
-  <div id="pause-button">
+
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-content">
+      <div class="loading-spinner">
+        <div class="tp-spinner">🧻</div>
+      </div>
+      <div class="loading-logo">🚽 Toilet Runner</div>
+      <div class="loading-progress">
+        <div class="loading-progress-bar" id="loading-progress-bar"></div>
+      </div>
+      <div class="loading-message">Preparing your run...</div>
+    </div>
+  </div>
+
+  <div id="score-display">0</div>
+
+  <!-- Pause Button - Hidden by default, shown during gameplay -->
+  <div id="pause-button" style="display: none;">
     <button id="pause-btn" aria-label="Pause Game">
       <span aria-hidden="true">⏸</span>
       <span class="pause-text">Pause</span>
     </button>
   </div>
-  
+
   <!-- Audio Button -->
   <div id="audio-button" class="audio-controls" aria-label="Toggle Sound" role="button" tabindex="0">
     <span class="audio-icon">🔊</span>
   </div>
-  
-  <!-- Modal Overlay -->
-  <div class="modal-overlay" id="overlay" role="dialog" aria-modal="true">
-    
-    <!-- Start Screen -->
-    <div class="modal-content" id="start-screen" style="display: flex;">
-      <div class="modal-header">
-        <h1 id="start-title">🚽 Toilet Runner</h1>
-      </div>
-      <div class="modal-body">
-        <p>Tap or press any key to start</p>
+
+     <!-- Modal Overlay -->
+     <div class="modal-overlay hidden" id="overlay" role="dialog" aria-modal="true">
+
+    <!-- Start Screen - Blue gradient theme matching intro -->
+     <div class="modal start-screen hidden" id="start-screen">
+      <div class="start-content">
+        <div class="start-logo">🚽 Toilet Runner</div>
+        <div class="start-subtitle">Dodge the poop!</div>
+        <div class="play-button-container menu-item">
+          <button id="play-button" class="btn btn-primary btn-play" aria-label="Start Game">
+            <span class="play-icon">▶️</span>
+            <span class="play-text">PLAY</span>
+          </button>
+        </div>
+        <div class="start-nav-buttons">
+          <button id="skins-button" class="btn btn-nav menu-item" aria-label="Character Skins">
+            <span class="btn-icon">🎨</span>
+            <span class="btn-text">Skins</span>
+          </button>
+          <button id="challenges-button" class="btn btn-nav menu-item" aria-label="Daily Challenges">
+            <span class="btn-icon">📅</span>
+            <span class="btn-text">Challenges</span>
+          </button>
+          <button id="stats-button" class="btn btn-nav menu-item" aria-label="Statistics">
+            <span class="btn-icon">📊</span>
+            <span class="btn-text">Stats</span>
+          </button>
+        </div>
       </div>
     </div>
-    
+
     <!-- Pause Screen -->
-    <div class="modal-content" id="pause-screen" style="display: none;">
+    <div class="modal modal-content" id="pause-screen" style="display: none;">
       <div class="modal-header">
         <h1>⏸️ Paused</h1>
       </div>
@@ -48,12 +89,12 @@
         <p>Press Resume or ESC to continue</p>
       </div>
       <div class="modal-footer">
-        <button id="resume-button" class="btn btn-primary">▶️ Resume</button>
+        <button id="resume-button" class="btn btn-primary menu-item">▶️ Resume</button>
       </div>
     </div>
-    
+
     <!-- Game Over Screen -->
-    <div class="modal-content" id="game-over-screen" style="display: none;">
+    <div class="modal modal-content" id="game-over-screen" style="display: none;">
       <div class="modal-header">
         <h1 id="game-over-title">🏆 Game Over!</h1>
       </div>
@@ -61,13 +102,14 @@
         <p id="final-score">Score: 0</p>
       </div>
       <div class="modal-footer game-over-footer">
-        <button id="restart-button" class="btn btn-primary">🔄 Play Again</button>
-        <button id="view-leaderboard-button" class="btn btn-secondary">🏆 Top Scores</button>
+        <button id="restart-button" class="btn btn-primary menu-item">🔄 Play Again</button>
+        <button id="view-leaderboard-button" class="btn btn-secondary menu-item">🏆 Top Scores</button>
+        <button id="home-button" class="btn btn-secondary menu-item">🏠 Home</button>
       </div>
     </div>
-    
+
     <!-- Leaderboard Screen -->
-    <div class="modal-content" id="leaderboard-screen" style="display: none;">
+    <div class="modal modal-content" id="leaderboard-screen" style="display: none;">
       <div class="modal-header">
         <h1>🏆 Top Scores</h1>
       </div>
@@ -75,10 +117,97 @@
         <ul id="leaderboard-list-full"></ul>
       </div>
       <div class="modal-footer leaderboard-footer">
-        <button id="back-to-game-over-button" class="btn btn-secondary">← Back</button>
+        <button id="back-to-game-over-button" class="btn btn-secondary menu-item">← Back</button>
+      </div>
+    </div>
+
+    <!-- Skin Selection Screen -->
+    <div class="modal modal-content" id="skin-screen" style="display: none;">
+      <div class="modal-header">
+        <h1>🎨 Character Skins</h1>
+        <div class="skin-header-stats">
+          <span id="skin-best-score">Best: 0</span>
+        </div>
+      </div>
+      <div class="modal-body skin-body">
+        <div id="skin-grid" class="skin-grid"></div>
+      </div>
+      <div class="modal-footer skin-footer">
+        <button id="back-from-skins-button" class="btn btn-secondary menu-item">← Back</button>
+      </div>
+    </div>
+
+    <!-- Daily Challenges Screen -->
+    <div class="modal modal-content" id="challenges-screen" style="display: none;">
+      <div class="modal-header">
+        <h1>📅 Daily Challenges</h1>
+        <div class="challenges-header-info">
+          <div class="coin-balance" id="challenges-coin-balance">
+            <span class="coin-icon">🪙</span>
+            <span class="coin-value" id="challenges-coin-value">0</span>
+          </div>
+          <div class="challenges-timer" id="challenges-timer">Reset in 23:59:59</div>
+        </div>
+      </div>
+      <div class="modal-body challenges-body">
+        <div id="challenges-list" class="challenges-list"></div>
+      </div>
+      <div class="modal-footer challenges-footer">
+        <button id="back-from-challenges-button" class="btn btn-secondary menu-item">← Back</button>
+      </div>
+    </div>
+
+    <!-- Stats Dashboard Screen -->
+    <div class="modal modal-content" id="stats-screen" style="display: none;">
+      <div class="modal-header">
+        <h1>📊 Statistics</h1>
+      </div>
+      <div class="modal-body stats-body">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">🎮</div>
+            <div class="stat-value" id="stat-total-runs">0</div>
+            <div class="stat-label">Total Runs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-value" id="stat-highest-score">0</div>
+            <div class="stat-label">Best Score</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📏</div>
+            <div class="stat-value" id="stat-total-distance">0</div>
+            <div class="stat-label">Total Distance</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💨</div>
+            <div class="stat-value" id="stat-obstacles-dodged">0</div>
+            <div class="stat-label">Obstacles Dodged</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">⏱️</div>
+            <div class="stat-value" id="stat-play-time">0m</div>
+            <div class="stat-label">Total Play Time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-value" id="stat-challenges">0</div>
+            <div class="stat-label">Challenges Completed</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🧻</div>
+            <div class="stat-value" id="stat-skins">1</div>
+            <div class="stat-label">Skins Unlocked</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer stats-footer">
+        <button id="back-from-stats-button" class="btn btn-secondary menu-item">← Back</button>
       </div>
     </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
+
 </html>
