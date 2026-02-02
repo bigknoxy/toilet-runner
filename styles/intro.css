@@ -216,9 +216,9 @@
 /* Pause Button */
 #pause-button {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 100;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 1000;
   display: none;
 }
 
@@ -251,16 +251,22 @@
 /* Audio Button */
 .audio-controls {
   position: fixed;
-  top: 20px;
-  left: 20px;
-  z-index: 100;
-  font-size: 1.5rem;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 1000;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  color: white;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 10px;
   transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
+  border: none;
 }
 
 .audio-controls:hover {
@@ -270,7 +276,21 @@
 
 /* Score Display - Positioning defined in modals.css */
 
-/* Responsive Adjustments */
+/* Responsive Adjustments for UI elements */
+@media (min-width: 768px) {
+  #pause-button {
+    top: max(20px, env(safe-area-inset-top));
+    left: max(20px, env(safe-area-inset-left));
+  }
+  
+  .audio-controls {
+    top: max(20px, env(safe-area-inset-top));
+    right: max(20px, env(safe-area-inset-right));
+    font-size: 1.6rem;
+    padding: 10px;
+  }
+}
+
 @media (max-width: 768px) {
   .intro-logo {
     font-size: 2.5rem;
