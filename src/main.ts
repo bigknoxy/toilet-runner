@@ -431,13 +431,7 @@ class ToiletRunner {
       this.dailyChallenges.updateProgress('distance', SCORE_RATE * delta);
       this.challengesNeedUpdate = true;
 
-      // Update score animator with actual score
-      this.scoreAnimator.updateScore(this.score);
-
-      // Update score display in game loop for smooth animation
-      this.scoreAnimator.update(delta);
-      
-      // Update HUD
+      // Update HUD (handles ScoreAnimator internally)
       this.hud.updateScore(this.score);
       this.hud.update(delta);
 

@@ -390,8 +390,8 @@
 /* Pause Button */
 #pause-button {
   position: fixed;
-  top: 16px;
-  left: 16px;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
   z-index: 1000;
   display: none;
 }
@@ -458,8 +458,8 @@
   position: relative;
   overflow: hidden;
   position: fixed;
-  top: 16px;
-  right: 16px;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
   width: 48px;
   height: 48px;
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
@@ -494,8 +494,8 @@
 #score,
 #score-display {
   position: fixed;
-  top: 20px;
-  right: 80px;
+  top: max(20px, env(safe-area-inset-top));
+  right: max(120px, calc(env(safe-area-inset-right) + 104px));
   font-family: 'Fredoka One', cursive;
   font-size: clamp(24px, 5vw, 32px);
   font-weight: bold;
