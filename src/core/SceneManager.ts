@@ -6,6 +6,7 @@ export class SceneManager {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
+  private postProcessing: any = null;
 
   constructor() {
     this.scene = this.createScene();
@@ -32,8 +33,9 @@ export class SceneManager {
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
-      
+      alpha: true
     });
+    renderer.setClearColor(0xcccccc, 1);
 
     const pixelRatio = Math.min(window.devicePixelRatio, PIXEL_RATIO_MAX);
     renderer.setPixelRatio(pixelRatio);
@@ -74,7 +76,15 @@ export class SceneManager {
     this.renderer.setSize(width, height);
   }
 
+  public setPostProcessing(postProcessing: any): void {
+    this.postProcessing = postProcessing;
+  }
+
   public render(): void {
-    this.renderer.render(this.scene, this.camera);
+    if (this.postProcessing && this.postProcessing.isEnabled()) {
+      this.postProcessing.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 }

@@ -1,0 +1,900 @@
+{
+  "testResults": {
+    "initializationOrder": true,
+    "nullReferenceWarnings": 0,
+    "statsModalWorking": true,
+    "challengesModalWorking": true,
+    "dataPersistence": true
+  },
+  "initializationOrder": [
+    "Setting up UI system references",
+    "UI system references set",
+    "Updating skin display",
+    "Updating challenges display",
+    "Updating stats from manager"
+  ],
+  "consoleMessages": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting...",
+      "timestamp": 1769879978671
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Starting...",
+      "timestamp": 1769879978682
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Creating PerformanceManager...",
+      "timestamp": 1769879978706
+    },
+    {
+      "type": "log",
+      "text": "🎮 Toilet Runner - Visual Polish Features Added",
+      "timestamp": 1769879978757
+    },
+    {
+      "type": "log",
+      "text": "🎮 Performance Tier: high",
+      "timestamp": 1769879978757
+    },
+    {
+      "type": "log",
+      "text": "[INIT] PerformanceManager created: {tier: high, shadows: true, postProcessing: true, particles: Object, pixelRatio: 2}",
+      "timestamp": 1769879978757
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Setting up game logic...",
+      "timestamp": 1769879978757
+    },
+    {
+      "type": "log",
+      "text": "[StatsManager] Creating new stats",
+      "timestamp": 1769879978757
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Game logic setup complete",
+      "timestamp": 1769879978778
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Setting up UI and input...",
+      "timestamp": 1769879978780
+    },
+    {
+      "type": "log",
+      "text": "[INIT] UI and input setup complete",
+      "timestamp": 1769879978780
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Setting up visual effects...",
+      "timestamp": 1769879978780
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Visual effects setup complete",
+      "timestamp": 1769879978787
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Showing loading screen...",
+      "timestamp": 1769879978787
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Loading screen shown, starting performLoading...",
+      "timestamp": 1769879978787
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Loading assets...",
+      "timestamp": 1769879978787
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] performLoading() started",
+      "timestamp": 1769879978787
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] startTime: 1769879978779",
+      "timestamp": 1769879978787
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] minLoadTime: 1500",
+      "timestamp": 1769879978787
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress bar found: JSHandle@node",
+      "timestamp": 1769879978787
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 0%",
+      "timestamp": 1769879978787
+    },
+    {
+      "type": "warning",
+      "text": "[GroupMarkerNotSet(crbug.com/242999)!:A0501800D4350000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader (about:flags#enable-unsafe-swiftshader) flag to opt in to lower security guarantees for trusted content.",
+      "timestamp": 1769879978790
+    },
+    {
+      "type": "warning",
+      "text": "[GroupMarkerNotSet(crbug.com/242999)!:A0201800D4350000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader (about:flags#enable-unsafe-swiftshader) flag to opt in to lower security guarantees for trusted content.",
+      "timestamp": 1769879978790
+    },
+    {
+      "type": "warning",
+      "text": "[GroupMarkerNotSet(crbug.com/242999)!:A0009600D4350000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader (about:flags#enable-unsafe-swiftshader) flag to opt in to lower security guarantees for trusted content.",
+      "timestamp": 1769879978790
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected.",
+      "timestamp": 1769879978796
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 3.3333333333333335%",
+      "timestamp": 1769879978831
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 6.800000000000001%",
+      "timestamp": 1769879978882
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 10.133333333333333%",
+      "timestamp": 1769879978932
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 13.533333333333333%",
+      "timestamp": 1769879978983
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 16.866666666666667%",
+      "timestamp": 1769879979033
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 20.200000000000003%",
+      "timestamp": 1769879979083
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 23.599999999999998%",
+      "timestamp": 1769879979133
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 26.93333333333333%",
+      "timestamp": 1769879979184
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 30.266666666666666%",
+      "timestamp": 1769879979234
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 33.6%",
+      "timestamp": 1769879979284
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 37%",
+      "timestamp": 1769879979335
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 40.33333333333333%",
+      "timestamp": 1769879979385
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 43.733333333333334%",
+      "timestamp": 1769879979436
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 47.06666666666667%",
+      "timestamp": 1769879979486
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 50.4%",
+      "timestamp": 1769879979536
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 53.733333333333334%",
+      "timestamp": 1769879979587
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 57.13333333333333%",
+      "timestamp": 1769879979637
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 60.53333333333333%",
+      "timestamp": 1769879979688
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 63.866666666666674%",
+      "timestamp": 1769879979738
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 67.2%",
+      "timestamp": 1769879979788
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 70.6%",
+      "timestamp": 1769879979838
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 73.93333333333332%",
+      "timestamp": 1769879979889
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 77.26666666666667%",
+      "timestamp": 1769879979939
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 80.66666666666666%",
+      "timestamp": 1769879979989
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 84%",
+      "timestamp": 1769879980040
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 87.4%",
+      "timestamp": 1769879980091
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 90.73333333333333%",
+      "timestamp": 1769879980141
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 94.13333333333334%",
+      "timestamp": 1769879980192
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Progress: 97.46666666666667%",
+      "timestamp": 1769879980242
+    },
+    {
+      "type": "log",
+      "text": "[LOADING] Loading loop complete",
+      "timestamp": 1769879980293
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Loading complete",
+      "timestamp": 1769879980293
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Fading loading screen...",
+      "timestamp": 1769879980293
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Fade animation started, waiting 800ms...",
+      "timestamp": 1769879980293
+    },
+    {
+      "type": "log",
+      "text": "[INIT] 800ms wait complete",
+      "timestamp": 1769879981095
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Explicitly hiding loading screen...",
+      "timestamp": 1769879981095
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Loading screen hidden",
+      "timestamp": 1769879981095
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Setting game state to MENU...",
+      "timestamp": 1769879981095
+    },
+    {
+      "type": "log",
+      "text": "[UI] showStartScreen() called",
+      "timestamp": 1769879981095
+    },
+    {
+      "type": "log",
+      "text": "[UI] hideAllScreens() completed",
+      "timestamp": 1769879981095
+    },
+    {
+      "type": "log",
+      "text": "[UI] _startScreen: true",
+      "timestamp": 1769879981095
+    },
+    {
+      "type": "log",
+      "text": "[UI] _overlay: true",
+      "timestamp": 1769879981096
+    },
+    {
+      "type": "log",
+      "text": "[UI] Removing hidden class from overlay and start-screen",
+      "timestamp": 1769879981096
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay classList: [modal-overlay]",
+      "timestamp": 1769879981096
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen classList: [start-screen]",
+      "timestamp": 1769879981096
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay display: flex",
+      "timestamp": 1769879981098
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen display: flex",
+      "timestamp": 1769879981098
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Game state set to MENU",
+      "timestamp": 1769879981098
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Setting up UI system references...",
+      "timestamp": 1769879981098
+    },
+    {
+      "type": "log",
+      "text": "[INIT] UI system references set",
+      "timestamp": 1769879981098
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Updating skin display...",
+      "timestamp": 1769879981098
+    },
+    {
+      "type": "log",
+      "text": "[UI] Updating skin grid with: {skinsCount: 8, selectedSkinId: classic, unlockedSkins: Array(1), bestScore: 0}",
+      "timestamp": 1769879981098
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Skin display updated",
+      "timestamp": 1769879981098
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Updating challenges display...",
+      "timestamp": 1769879981098
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Challenges display updated",
+      "timestamp": 1769879981100
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Updating stats from manager...",
+      "timestamp": 1769879981100
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Stats updated",
+      "timestamp": 1769879981100
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Registering game loop system...",
+      "timestamp": 1769879981100
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Game loop system registered",
+      "timestamp": 1769879981101
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Starting game loop...",
+      "timestamp": 1769879981101
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0001",
+      "timestamp": 1769879981101
+    },
+    {
+      "type": "log",
+      "text": "[INIT] Game loop started - initialization complete!",
+      "timestamp": 1769879981256
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.1000",
+      "timestamp": 1769879981256
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.1000",
+      "timestamp": 1769879982518
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0221",
+      "timestamp": 1769879982555
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0576",
+      "timestamp": 1769879982602
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0669",
+      "timestamp": 1769879982668
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0742",
+      "timestamp": 1769879982741
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0822",
+      "timestamp": 1769879982821
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0602",
+      "timestamp": 1769879982881
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0689",
+      "timestamp": 1769879982953
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0796",
+      "timestamp": 1769879983031
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.1000",
+      "timestamp": 1769879983138
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0067",
+      "timestamp": 1769879983149
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0642",
+      "timestamp": 1769879983212
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0642",
+      "timestamp": 1769879983273
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0650",
+      "timestamp": 1769879983340
+    },
+    {
+      "type": "log",
+      "text": "[UI] showStartScreen() called",
+      "timestamp": 1769879983364
+    },
+    {
+      "type": "log",
+      "text": "[UI] hideAllScreens() completed",
+      "timestamp": 1769879983365
+    },
+    {
+      "type": "log",
+      "text": "[UI] _startScreen: true",
+      "timestamp": 1769879983365
+    },
+    {
+      "type": "log",
+      "text": "[UI] _overlay: true",
+      "timestamp": 1769879983365
+    },
+    {
+      "type": "log",
+      "text": "[UI] Removing hidden class from overlay and start-screen",
+      "timestamp": 1769879983365
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay classList: [modal-overlay]",
+      "timestamp": 1769879983365
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen classList: [start-screen]",
+      "timestamp": 1769879983365
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay display: flex",
+      "timestamp": 1769879983370
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen display: flex",
+      "timestamp": 1769879983370
+    },
+    {
+      "type": "log",
+      "text": "[UI] showStartScreen() called",
+      "timestamp": 1769879983373
+    },
+    {
+      "type": "log",
+      "text": "[UI] hideAllScreens() completed",
+      "timestamp": 1769879983373
+    },
+    {
+      "type": "log",
+      "text": "[UI] _startScreen: true",
+      "timestamp": 1769879983373
+    },
+    {
+      "type": "log",
+      "text": "[UI] _overlay: true",
+      "timestamp": 1769879983373
+    },
+    {
+      "type": "log",
+      "text": "[UI] Removing hidden class from overlay and start-screen",
+      "timestamp": 1769879983373
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay classList: [modal-overlay]",
+      "timestamp": 1769879983373
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen classList: [start-screen]",
+      "timestamp": 1769879983373
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay display: flex",
+      "timestamp": 1769879983373
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen display: flex",
+      "timestamp": 1769879983373
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0797",
+      "timestamp": 1769879983420
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0559",
+      "timestamp": 1769879983475
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0617",
+      "timestamp": 1769879983541
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.1000",
+      "timestamp": 1769879984030
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0683",
+      "timestamp": 1769879984135
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0713",
+      "timestamp": 1769879984170
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0639",
+      "timestamp": 1769879984239
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0628",
+      "timestamp": 1769879984295
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0666",
+      "timestamp": 1769879984363
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0664",
+      "timestamp": 1769879984429
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0093",
+      "timestamp": 1769879984440
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0622",
+      "timestamp": 1769879984499
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0686",
+      "timestamp": 1769879984569
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0619",
+      "timestamp": 1769879984630
+    },
+    {
+      "type": "log",
+      "text": "[UI] showStartScreen() called",
+      "timestamp": 1769879984639
+    },
+    {
+      "type": "log",
+      "text": "[UI] hideAllScreens() completed",
+      "timestamp": 1769879984642
+    },
+    {
+      "type": "log",
+      "text": "[UI] _startScreen: true",
+      "timestamp": 1769879984642
+    },
+    {
+      "type": "log",
+      "text": "[UI] _overlay: true",
+      "timestamp": 1769879984642
+    },
+    {
+      "type": "log",
+      "text": "[UI] Removing hidden class from overlay and start-screen",
+      "timestamp": 1769879984642
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay classList: [modal-overlay]",
+      "timestamp": 1769879984642
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen classList: [start-screen]",
+      "timestamp": 1769879984642
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay display: flex",
+      "timestamp": 1769879984643
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen display: flex",
+      "timestamp": 1769879984643
+    },
+    {
+      "type": "log",
+      "text": "[UI] showStartScreen() called",
+      "timestamp": 1769879984644
+    },
+    {
+      "type": "log",
+      "text": "[UI] hideAllScreens() completed",
+      "timestamp": 1769879984647
+    },
+    {
+      "type": "log",
+      "text": "[UI] _startScreen: true",
+      "timestamp": 1769879984647
+    },
+    {
+      "type": "log",
+      "text": "[UI] _overlay: true",
+      "timestamp": 1769879984647
+    },
+    {
+      "type": "log",
+      "text": "[UI] Removing hidden class from overlay and start-screen",
+      "timestamp": 1769879984647
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay classList: [modal-overlay]",
+      "timestamp": 1769879984647
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen classList: [start-screen]",
+      "timestamp": 1769879984647
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay display: flex",
+      "timestamp": 1769879984647
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen display: flex",
+      "timestamp": 1769879984647
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0150",
+      "timestamp": 1769879984648
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0269",
+      "timestamp": 1769879984676
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0688",
+      "timestamp": 1769879984740
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0675",
+      "timestamp": 1769879984811
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0041",
+      "timestamp": 1769879984817
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0690",
+      "timestamp": 1769879984882
+    },
+    {
+      "type": "log",
+      "text": "[GAMELOOP] UPDATE CALLED - delta: 0.0615",
+      "timestamp": 1769879984946
+    },
+    {
+      "type": "log",
+      "text": "[UI] showStartScreen() called",
+      "timestamp": 1769879984960
+    },
+    {
+      "type": "log",
+      "text": "[UI] hideAllScreens() completed",
+      "timestamp": 1769879984960
+    },
+    {
+      "type": "log",
+      "text": "[UI] _startScreen: true",
+      "timestamp": 1769879984960
+    },
+    {
+      "type": "log",
+      "text": "[UI] _overlay: true",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] Removing hidden class from overlay and start-screen",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay classList: [modal-overlay]",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen classList: [start-screen]",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay display: flex",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen display: flex",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] showStartScreen() called",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] hideAllScreens() completed",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] _startScreen: true",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] _overlay: true",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] Removing hidden class from overlay and start-screen",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay classList: [modal-overlay]",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen classList: [start-screen]",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] overlay display: flex",
+      "timestamp": 1769879984961
+    },
+    {
+      "type": "log",
+      "text": "[UI] startScreen display: flex",
+      "timestamp": 1769879984961
+    }
+  ],
+  "timestamp": "2026-01-31T17:19:44.968Z",
+  "bugFixed": true
+}
