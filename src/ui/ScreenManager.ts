@@ -35,7 +35,6 @@ export class ScreenManager {
    */
   push(state: GameState): void {
     if (!this.canTransition(state)) {
-      console.warn(`Invalid transition from ${GameState[this._currentState]} to ${GameState[state]}`);
       return;
     }
 
@@ -52,7 +51,6 @@ export class ScreenManager {
    */
   pop(): void {
     if (this._screenStack.length <= 1) {
-      console.warn('Cannot pop: already at root state (MENU)');
       return;
     }
 

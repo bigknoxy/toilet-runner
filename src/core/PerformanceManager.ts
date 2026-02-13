@@ -23,7 +23,6 @@ export class PerformanceManager {
 
   static async initialize(): Promise<PerformanceConfig> {
     await this.detectCapabilities();
-    console.log('🎮 Performance Tier:', this.tier);
     return this.getConfig();
   }
 

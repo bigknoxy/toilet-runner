@@ -100,11 +100,14 @@ export class ObstacleManager {
     group.add(tip);
     
     // Emoji face (if enabled, replaces eyes/smile)
+    // Each obstacle gets its own cloned geometry to avoid shared UV mutation
     if (this._emojiFacesEnabled && this._faceGeometry && this._faceMaterial) {
-      const face = new THREE.Mesh(this._faceGeometry, this._faceMaterial);
+      const faceGeo = this._faceGeometry.clone();
+      const face = new THREE.Mesh(faceGeo, this._faceMaterial);
       face.position.set(0, 0.65, 0.6);
       face.castShadow = false;
       face.receiveShadow = false;
+      face.userData.isEmojiFace = true;
       face.userData.emojiIndex = Math.floor(Math.random() * 5);
       group.add(face);
     } else {
@@ -240,15 +243,22 @@ export class ObstacleManager {
     inactiveObstacle.scale = 0.9 + Math.random() * 0.2;
     inactiveObstacle.rotationY = (Math.random() - 0.5) * 0.5;
     inactiveObstacle.emojiIndex = Math.floor(Math.random() * 5);
+    this._activeCount++;
 
-    // Update emoji face UVs if enabled
-    if (this._emojiFacesEnabled && this._faceGeometry) {
-      const uvs = EmojiTextureAtlas.getUVs(inactiveObstacle.emojiIndex);
-      this._faceGeometry.attributes.uv.setXY(0, uvs[0].x, uvs[0].y);
-      this._faceGeometry.attributes.uv.setXY(1, uvs[1].x, uvs[1].y);
-      this._faceGeometry.attributes.uv.setXY(2, uvs[2].x, uvs[2].y);
-      this._faceGeometry.attributes.uv.setXY(3, uvs[3].x, uvs[3].y);
-      this._faceGeometry.attributes.uv.needsUpdate = true;
+    // Update emoji face UVs on this obstacle's own geometry
+    if (this._emojiFacesEnabled) {
+      const faceMesh = inactiveObstacle.mesh.children.find(
+        (c): c is THREE.Mesh => (c as THREE.Mesh).userData?.isEmojiFace === true
+      );
+      if (faceMesh) {
+        const uvs = EmojiTextureAtlas.getUVs(inactiveObstacle.emojiIndex);
+        const geo = faceMesh.geometry;
+        geo.attributes.uv.setXY(0, uvs[0].x, uvs[0].y);
+        geo.attributes.uv.setXY(1, uvs[1].x, uvs[1].y);
+        geo.attributes.uv.setXY(2, uvs[2].x, uvs[2].y);
+        geo.attributes.uv.setXY(3, uvs[3].x, uvs[3].y);
+        geo.attributes.uv.needsUpdate = true;
+      }
     }
 
     const laneX = this.getLaneX(lane);
@@ -272,29 +282,6 @@ export class ObstacleManager {
 
   private getLaneX(lane: number): number {
     return (lane - 1) * LANE_WIDTH;
-  }
-
-  checkCollisions(playerX: number, playerZ: number): boolean {
-    const playerBox = new THREE.Box3().setFromCenterAndSize(
-      new THREE.Vector3(playerX, 0.5, playerZ),
-      new THREE.Vector3(1.4, 1.4, 1.0)
-    );
-
-    for (const obstacle of this._obstacles) {
-      if (!obstacle.active) continue;
-
-      const obstacleX = this.getLaneX(obstacle.lane);
-      const obstacleBox = new THREE.Box3().setFromCenterAndSize(
-        new THREE.Vector3(obstacleX, 0.3, obstacle.z),
-        new THREE.Vector3(1.4 * obstacle.scale, 1.0 * obstacle.scale, 1.2 * obstacle.scale)
-      );
-
-      if (playerBox.intersectsBox(obstacleBox)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   reset(): void {

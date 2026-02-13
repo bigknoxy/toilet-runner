@@ -236,7 +236,6 @@ export class PatternSequencer {
     }
 
     // This should never happen with our pattern pool, but just in case:
-    console.warn('Warning: No compatible pattern found, using original pattern - solvability not guaranteed');
     return originalPattern;
   }
 

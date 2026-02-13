@@ -83,7 +83,6 @@ export class HUD {
     (this._scoreElement as any).style.color = '#FFFFFF';
     (this._scoreElement as any).style.letterSpacing = '-0.5px';
 
-    console.log('[HUD] Enhanced styling applied to score display');
   }
 
   /**

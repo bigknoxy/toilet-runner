@@ -60,14 +60,13 @@ class ToiletRunner {
   private lastDodgedCount = 0;
   private currentStreak = 0;
   private challengesNeedUpdate = false;
-  private passedObstacles: Set<number> = new Set();
+  private passedObstacles: Set<string> = new Set();
 
   private postProcessing!: PostProcessingManager;
   private dustParticles!: ParticleSystem;
   private sparkleParticles!: ParticleSystem;
   private impactParticles!: ParticleSystem;
   private coinParticles!: ParticleSystem;
-  private frameCounter = 0;
   private dustEmissionTimer = 0;
 
   constructor() {
@@ -75,73 +74,62 @@ class ToiletRunner {
   }
 
   private async initialize(): Promise<void> {
-    console.log('[INIT] Starting...');
-    this.sceneManager = new SceneManager();
-    this.gameLoop = new GameLoop();
+    try {
+      this.sceneManager = new SceneManager();
+      this.gameLoop = new GameLoop();
 
-    console.log('[INIT] Creating PerformanceManager...');
-    this.performanceConfig = await PerformanceManager.initialize();
-    console.log('[INIT] PerformanceManager created:', this.performanceConfig);
+      this.performanceConfig = await PerformanceManager.initialize();
 
-    console.log('[INIT] Setting up game logic...');
-    this.setupGameLogic();
-    console.log('[INIT] Game logic setup complete');
+      this.setupGameLogic();
+      this.setupUIAndInput();
+      this.setupVisualEffects();
+      this.setupResizeListener();
 
-    console.log('[INIT] Setting up UI and input...');
-    this.setupUIAndInput();
-    console.log('[INIT] UI and input setup complete');
+      this.ui.showLoadingScreen();
 
-    console.log('[INIT] Setting up visual effects...');
-    this.setupVisualEffects();
-    console.log('[INIT] Visual effects setup complete');
+      await this.performLoading();
 
-    console.log('[INIT] Showing loading screen...');
-    this.ui.showLoadingScreen();
-    console.log('[INIT] Loading screen shown, starting performLoading...');
+      this.ui.fadeLoadingScreen();
 
-    console.log('[INIT] Loading assets...');
-    await this.performLoading();
-    console.log('[INIT] Loading complete');
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-    console.log('[INIT] Fading loading screen...');
-    this.ui.fadeLoadingScreen();
-    console.log('[INIT] Fade animation started, waiting 800ms...');
+      this.ui.hideLoadingScreen();
 
-    await new Promise(resolve => setTimeout(resolve, 800));
-    console.log('[INIT] 800ms wait complete');
+      this.ui.setGameState(this.currentGameState);
 
-    console.log('[INIT] Explicitly hiding loading screen...');
-    this.ui.hideLoadingScreen();
-    console.log('[INIT] Loading screen hidden');
+      this.ui.setDailyChallenges(this.dailyChallenges);
+      this.ui.setStatsManager(this.statsManager);
 
-    console.log('[INIT] Setting game state to MENU...');
-    this.ui.setGameState(this.currentGameState);
-    console.log('[INIT] Game state set to MENU');
+      this.updateSkinDisplay();
+      this.ui.updateChallengesDisplay();
+      this.ui.updateStatsFromManager();
 
-    console.log('[INIT] Setting up UI system references...');
-    this.ui.setDailyChallenges(this.dailyChallenges);
-    this.ui.setStatsManager(this.statsManager);
-    console.log('[INIT] UI system references set');
+      this.gameLoop.registerSystem(this.update.bind(this));
+      this.gameLoop.start();
+    } catch (error) {
+      this.showFatalError(error);
+    }
+  }
 
-    console.log('[INIT] Updating skin display...');
-    this.updateSkinDisplay();
-    console.log('[INIT] Skin display updated');
+  private showFatalError(error: unknown): void {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const isWebGLError = message.includes('WebGL') || message.includes('canvas') || message.includes('renderer');
 
-    console.log('[INIT] Updating challenges display...');
-    this.ui.updateChallengesDisplay();
-    console.log('[INIT] Challenges display updated');
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;z-index:10000;padding:20px;';
 
-    console.log('[INIT] Updating stats from manager...');
-    this.ui.updateStatsFromManager();
-    console.log('[INIT] Stats updated');
+    const content = document.createElement('div');
+    content.style.cssText = 'text-align:center;color:#fff;font-family:Poppins,sans-serif;max-width:400px;';
+    content.innerHTML = isWebGLError
+      ? `<h2 style="color:#ff6b6b;">WebGL Not Supported</h2>
+         <p style="color:#ccc;margin-top:12px;">Your browser or device doesn't support WebGL, which is required to run this game.</p>
+         <p style="color:#999;margin-top:8px;">Try using a modern browser like Chrome, Firefox, or Safari.</p>`
+      : `<h2 style="color:#ff6b6b;">Failed to Load Game</h2>
+         <p style="color:#ccc;margin-top:12px;">Something went wrong while starting the game.</p>
+         <p style="color:#999;margin-top:8px;">Try refreshing the page. If the problem persists, try a different browser.</p>`;
 
-    console.log('[INIT] Registering game loop system...');
-    this.gameLoop.registerSystem(this.update.bind(this));
-    console.log('[INIT] Game loop system registered');
-
-    console.log('[INIT] Starting game loop...');
-    this.gameLoop.start();
-    console.log('[INIT] Game loop started - initialization complete!');
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
   }
 
   private setupResizeListener(): void {
@@ -152,7 +140,6 @@ class ToiletRunner {
         window.clearTimeout(resizeTimeout);
       }
       resizeTimeout = window.setTimeout(() => {
-        console.log('[RESIZE] Updating renderer size:', window.innerWidth, 'x', window.innerHeight);
         this.sceneManager.resize(window.innerWidth, window.innerHeight);
         resizeTimeout = null;
       }, 100);
@@ -160,35 +147,26 @@ class ToiletRunner {
 
     window.addEventListener('resize', debouncedResize);
     window.addEventListener('orientationchange', debouncedResize);
-
-    console.log('[INIT] Resize listener registered');
   }
 
   private async performLoading(): Promise<void> {
-    console.log('[LOADING] performLoading() started');
-    
     const minLoadTime = 1500;
     const startTime = Date.now();
-    console.log('[LOADING] startTime:', startTime);
-    console.log('[LOADING] minLoadTime:', minLoadTime);
-    
+
     const progressBar = this.ui.getLoadingProgressBar();
-    if (!progressBar) {
-      console.log('[LOADING] Progress bar NOT found!');
-    } else {
-      console.log('[LOADING] Progress bar found:', progressBar);
-    }
-    
+
     while (Date.now() - startTime < minLoadTime) {
       const elapsed = Date.now() - startTime;
       const progress = Math.min((elapsed / minLoadTime) * 100, 100);
-      console.log('[LOADING] Progress:', progress + '%');
-      progressBar.style.width = progress + '%';
+      if (progressBar) {
+        progressBar.style.width = progress + '%';
+      }
       await new Promise(resolve => setTimeout(resolve, 50));
     }
-    
-    progressBar.style.width = '100%';
-    console.log('[LOADING] Loading loop complete');
+
+    if (progressBar) {
+      progressBar.style.width = '100%';
+    }
   }
 
   private setupVisualEffects(): void {
@@ -199,22 +177,22 @@ class ToiletRunner {
     MaterialFactory.setQuality(this.performanceConfig.tier);
 
     const particleConfig = this.performanceConfig.particles;
-    
+
     this.dustParticles = new ParticleSystem(scene, {
       ...ParticlePresets[ParticleType.DUST],
       maxParticles: Math.min(50, particleConfig.collision)
     });
-    
+
     this.sparkleParticles = new ParticleSystem(scene, {
       ...ParticlePresets[ParticleType.SPARKLE],
       maxParticles: Math.min(30, particleConfig.effects || 15)
     });
-    
+
     this.impactParticles = new ParticleSystem(scene, {
       ...ParticlePresets[ParticleType.IMPACT],
       maxParticles: particleConfig.collision
     });
-    
+
     this.coinParticles = new ParticleSystem(scene, {
       ...ParticlePresets[ParticleType.COIN],
       maxParticles: Math.min(40, particleConfig.effects || 15)
@@ -252,10 +230,10 @@ class ToiletRunner {
 
     // Initialize stats manager (unified)
     this.statsManager = new StatsManager();
-    
+
     // Initialize score animator
     this.scoreAnimator = new ScoreAnimator();
-    
+
     // Initialize HUD and integrate with ScoreAnimator
     this.hud = new HUD();
     this.hud.setScoreAnimator(this.scoreAnimator);
@@ -321,14 +299,7 @@ class ToiletRunner {
   }
 
   private update(delta: number): void {
-    console.log('[GAMELOOP] UPDATE CALLED - delta:', delta.toFixed(4));
     PerformanceManager.updateFPS(delta);
-
-    // Log state every 60 frames (approx 1 second at 60fps)
-    this.frameCounter = (this.frameCounter || 0) + 1;
-    if (this.frameCounter % 60 === 0) {
-      console.log('[GAMELOOP] Frame:', this.frameCounter, 'State:', this.currentGameState);
-    }
 
     if (this.currentGameState === GameState.PLAYING) {
       const speedIncrease = Math.floor(this.score / 10) * SPEED_INCREASE;
@@ -355,31 +326,46 @@ class ToiletRunner {
       // Check for successful dodges and trigger celebration effects
       const activeObstacles = this.obstacles.getActiveObstacles();
       const playerPos = this.runner.getPosition();
-      
+
       for (const obstacle of activeObstacles) {
         const obstacleId = `${obstacle.x}_${obstacle.z}`;
-        
+
         // If obstacle is behind player and not yet counted as passed
         if (obstacle.z > playerPos.z + 2 && !this.passedObstacles.has(obstacleId)) {
           this.passedObstacles.add(obstacleId);
-          
+
+          // Check for near miss (obstacle in adjacent lane, close to player)
+          const lateralDist = Math.abs(obstacle.x - playerPos.x);
+          const isNearMiss = lateralDist < 2.5 && lateralDist > 0.5;
+
+          if (isNearMiss) {
+            // Enhanced feedback for near miss
+            this.ui.showNearMissToast();
+            this.runner.triggerSuccessBounce();
+          }
+
           // Trigger celebration effects for successful dodge
           const dodgePos = new THREE.Vector3(obstacle.x, playerPos.y, playerPos.z + 1);
           this.sparkleParticles.emitSparkle(dodgePos);
-          
+
           // Light camera shake for successful dodge
           this.cameraShake.shake(0.03, 0.1);
         }
       }
-      
+
       // Clean up passed obstacles that are too far behind
+      // Copy to array first to avoid mutating Set during iteration
+      const toDelete: string[] = [];
       this.passedObstacles.forEach((obstacleId) => {
         const [x, z] = obstacleId.split('_').map(Number);
         if (z > playerPos.z + 10) {
-          this.passedObstacles.delete(obstacleId);
+          toDelete.push(obstacleId);
         }
       });
-      
+      for (const id of toDelete) {
+        this.passedObstacles.delete(id);
+      }
+
       // Update camera follow with player position
       const playerPosition = this.runner.getPosition();
       this.cameraManager.updateCameraFollow(playerPosition, delta);
@@ -392,8 +378,7 @@ class ToiletRunner {
       // Emit dust particles continuously while running
       this.dustEmissionTimer += delta;
       if (this.dustEmissionTimer > 0.1) { // Emit dust every 0.1 seconds
-        const playerPos = this.runner.getPosition();
-        const dustPos = playerPos.clone();
+        const dustPos = this.runner.getPosition();
         dustPos.z += 0.3; // Position slightly behind the runner
         dustPos.y -= 0.2; // Position near the ground
         this.dustParticles.emitDust(dustPos);
@@ -409,12 +394,8 @@ class ToiletRunner {
       this.trailRenderer.update(playerPosition, gameSpeed, this.runner.isChangingLanes());
 
       if (this.collision.checkPlayerVsObstacles(this.runner.getMesh(), this.obstacles)) {
-        console.log('[MAIN] ==================== COLLISION DETECTED IN MAIN ====================');
-        console.log('[MAIN] Calling handleCollision()...');
         this.handleCollision();
-        console.log('[MAIN] handleCollision() complete, calling endGame()...');
         this.endGame();
-        console.log('[MAIN] endGame() complete, collision handling done');
       }
 
       const prevScore = Math.floor(this.score);
@@ -455,13 +436,7 @@ class ToiletRunner {
     }
 
     // Always render, even in MENU and GAMEOVER states
-    // This ensures UI overlays are properly displayed
     this.sceneManager.render();
-    
-    // Log rendering state every 60 frames
-    if (this.frameCounter % 60 === 0) {
-      console.log('[GAMELOOP] Frame:', this.frameCounter, 'State:', this.currentGameState, 'Rendered scene');
-    }
   }
 
   private handleCollision(): void {
@@ -484,32 +459,21 @@ class ToiletRunner {
   }
 
   public startGame(): void {
-    console.log('[GAME] startGame called, current state:', this.currentGameState);
     this.ui.hideAllScreens();
     this.currentGameState = GameState.PLAYING;
     this.ui.setGameState(this.currentGameState);
     this.reset();
     this.audioManager.playStartGame();
     this.statsManager.startSession();
-    console.log('[GAME] Game started successfully, state is now PLAYING');
   }
 
   private endGame(): void {
-    console.log('[GAME] ==================== ENDGAME START ====================');
-    console.log('[GAME] Score:', this.score, 'Survival time:', this.survivalTime);
-    console.log('[GAME] Current state before endGame:', this.currentGameState);
-    
     this.currentGameState = GameState.GAMEOVER;
-    console.log('[GAME] State changed to GAMEOVER');
-    
     this.ui.setGameState(this.currentGameState);
-    console.log('[GAME] Called ui.setGameState(GAMEOVER)');
-    
     this.audioManager.playGameOver();
-    this.cameraShake.shake(0.25, 0.5); // Heavy, longer shake for game over
+    this.cameraShake.shake(0.25, 0.5);
 
     this.leaderboard.addScore(this.score);
-    console.log('[GAME] Score added to leaderboard');
 
     const sessionDistance = this.score;
     this.statsManager.endSession({
@@ -518,7 +482,6 @@ class ToiletRunner {
       obstaclesDodged: this.obstacles.getDodgedCount(),
       duration: this.survivalTime
     });
-    console.log('[GAME] Stats manager updated');
 
     // Update highest score and check for skin unlocks
     this.statsManager.updateHighestScore(Math.floor(this.score));
@@ -533,42 +496,26 @@ class ToiletRunner {
     } else {
       this.statsManager.updateStreak(false);
     }
-    console.log('[GAME] Streak updated:', this.statsManager.getCurrentStreak());
 
     const topScores = this.leaderboard.getTopScores();
     this.ui.updateLeaderboardFull(topScores);
-    console.log('[UI] Leaderboard updated');
 
     this.ui.updateStatsFromManager();
-    console.log('[UI] Stats from manager updated');
-    console.log('[GAME] Character customization updated');
-    
     this.ui.updateChallengesDisplay();
-    console.log('[UI] Challenges display updated');
-    
-    console.log('[GAME] About to call showGameOverScreen...');
-    this.ui.showGameOverScreen(this.score);
-    
-    // Verify DOM state after a short delay
-    setTimeout(() => {
-      const overlay = document.getElementById('overlay');
-      const gameOverScreen = document.getElementById('game-over-screen');
-      console.log('[GAME] ==================== DOM CHECK (100ms delay) ====================');
-      console.log('[GAME] Overlay exists:', !!overlay);
-      console.log('[GAME] Overlay display:', overlay?.style.display);
-      console.log('[GAME] Overlay computed display:', overlay ? window.getComputedStyle(overlay).display : 'N/A');
-      console.log('[GAME] Overlay computed z-index:', overlay ? window.getComputedStyle(overlay).zIndex : 'N/A');
-      console.log('[GAME] Overlay computed visibility:', overlay ? window.getComputedStyle(overlay).visibility : 'N/A');
-      console.log('[GAME] Game over screen exists:', !!gameOverScreen);
-      console.log('[GAME] Game over screen display:', gameOverScreen?.style.display);
-      console.log('[GAME] Game over screen computed display:', gameOverScreen ? window.getComputedStyle(gameOverScreen).display : 'N/A');
-      
-      const overlayRect = overlay?.getBoundingClientRect();
-      const gameOverRect = gameOverScreen?.getBoundingClientRect();
-      console.log('[GAME] Overlay rect:', overlayRect);
-      console.log('[GAME] Game over screen rect:', gameOverRect);
-      console.log('[GAME] ==================== ENDGAME COMPLETE ====================');
-    }, 100);
+
+    const highScore = this.statsManager.getHighestScore();
+    const isNewBest = Math.floor(this.score) >= highScore && this.score > 0;
+    const message = this.getEncouragingMessage(this.score, highScore, this.survivalTime);
+    this.ui.showGameOverScreen(this.score, message, isNewBest);
+  }
+
+  private getEncouragingMessage(score: number, highScore: number, time: number): string {
+    if (score >= highScore && score > 0) return 'New Personal Best!';
+    if (score > highScore * 0.9 && highScore > 0) return 'So close to your record!';
+    if (time > 60) return 'Great endurance!';
+    if (score > 200) return 'Impressive run!';
+    if (score > 50) return 'Nice dodging!';
+    return 'Keep practicing!';
   }
 
   public showLeaderboard(): void {
@@ -611,7 +558,6 @@ class ToiletRunner {
   }
 
   public restartGame(): void {
-    console.log('[GAME] Restarting game...');
     this.startGame();
   }
 
@@ -649,8 +595,8 @@ class ToiletRunner {
       }
       this.audioManager.playLaneChange();
 
-      // Haptic feedback on mobile instead of camera shake
-      if ('vibrate' in navigator && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      // Haptic feedback on mobile
+      if ('vibrate' in navigator && navigator.maxTouchPoints > 0) {
         navigator.vibrate(15);
       }
 
@@ -706,5 +652,11 @@ class ToiletRunner {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const game = new ToiletRunner();
-  console.log('🎮 Toilet Runner - Visual Polish Features Added');
+
+  // Register service worker for offline support
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // Service worker registration failed - app still works without it
+    });
+  }
 });

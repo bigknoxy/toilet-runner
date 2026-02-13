@@ -57,7 +57,6 @@ export class TrackManager {
       instanceIndex = this.freeInstanceIndices.pop()!;
     } else {
       if (this.nextInstanceIndex >= this.instancedMesh.count) {
-        console.warn('Reached maximum track instances');
         return;
       }
       instanceIndex = this.nextInstanceIndex++;

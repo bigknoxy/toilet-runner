@@ -1,6 +1,4 @@
 import { GameState } from '../core/GameState';
-
-import { GameState } from '../core/GameState';
 import { DailyChallengeSystem } from '../game/DailyChallenges';
 import { StatsManager, PlayerStats } from '../core/StatsManager';
 
@@ -112,12 +110,6 @@ export class UIManager {
 
     // Global keyboard escape - perform action based on current state
     document.addEventListener('keydown', (e) => {
-      // TEST: Press 'T' to manually trigger game over screen
-      if (e.key === 't' || e.key === 'T') {
-        console.log('[DEBUG] T key pressed - testing game over screen directly');
-        this.showGameOverScreen(12345);
-      }
-      
       if (e.key === 'Escape') {
         if (this.currentGameState === GameState.PAUSED) {
           if (this._onResume) this._onResume();
@@ -129,8 +121,6 @@ export class UIManager {
       }
     });
 
-
-
     // Add click to start screen - but ignore clicks on navigation buttons
     if (this._startScreen) {
       this._startScreen.addEventListener('click', (e) => {
@@ -138,8 +128,8 @@ export class UIManager {
         if (this._startScreen && !this._startScreen.classList.contains('hidden')) {
           // Don't start game if clicking on navigation buttons or interactive elements
           const target = e.target as HTMLElement;
-          const isNavigationButton = target.closest('#skins-button') || 
-                                    target.closest('#challenges-button') || 
+          const isNavigationButton = target.closest('#skins-button') ||
+                                    target.closest('#challenges-button') ||
                                     target.closest('#stats-button') ||
                                     target.closest('#play-button') ||
                                     target.closest('.skin-card') ||
@@ -149,18 +139,13 @@ export class UIManager {
                                     target.closest('a');
 
           if (!isNavigationButton) {
-            console.log('UIManager: Click detected on start screen (not button)');
             if (this._onPlay) {
               this._onPlay();
             }
-          } else {
-            console.log('UIManager: Click on button, ignoring for game start');
           }
         }
       });
     }
-
-    // Remove overlay click handler - only use start screen handler and specific button handlers
 
     // Play button handler (prevent bubbling to parent)
     const playButton = document.getElementById('play-button');
@@ -281,24 +266,12 @@ export class UIManager {
   }
 
   public showStartScreen(): void {
-    console.log('[UI] showStartScreen() called');
     this.hideAllScreens();
-    console.log('[UI] hideAllScreens() completed');
-    console.log('[UI] _startScreen:', !!this._startScreen);
-    console.log('[UI] _overlay:', !!this._overlay);
     if (this._startScreen && this._overlay) {
-      console.log('[UI] Removing hidden class from overlay and start-screen');
       this._overlay.classList.remove('hidden');
       this._startScreen.classList.remove('hidden');
-      // Add visible class for transitions
       this._startScreen.classList.add('visible');
       this._overlay.classList.add('visible');
-      console.log('[UI] overlay classList:', this._overlay.classList);
-      console.log('[UI] startScreen classList:', this._startScreen.classList);
-      console.log('[UI] overlay display:', window.getComputedStyle(this._overlay).display);
-      console.log('[UI] startScreen display:', window.getComputedStyle(this._startScreen).display);
-    } else {
-      console.error('[UI] showStartScreen() failed - startScreen:', !!this._startScreen, 'overlay:', !!this._overlay);
     }
   }
 
@@ -313,13 +286,25 @@ export class UIManager {
     }
   }
 
-  public showGameOverScreen(finalScore: number): void {
+  public showGameOverScreen(finalScore: number, message?: string, isNewBest?: boolean): void {
     this.hideAllScreens();
     if (this._gameOverScreen && this._finalScore && this._overlay) {
       this._overlay.classList.remove('hidden');
       this._gameOverScreen.classList.remove('hidden');
       this._finalScore.textContent = `Score: ${Math.floor(finalScore)}`;
-      // Add visible class for transitions
+
+      // Show encouraging message
+      const messageEl = this._gameOverScreen.querySelector('.game-over-message');
+      if (messageEl) {
+        messageEl.textContent = message || '';
+        messageEl.classList.toggle('new-best', isNewBest === true);
+      } else if (message) {
+        const msgDiv = document.createElement('p');
+        msgDiv.className = `game-over-message${isNewBest ? ' new-best' : ''}`;
+        msgDiv.textContent = message;
+        this._finalScore.insertAdjacentElement('afterend', msgDiv);
+      }
+
       this._gameOverScreen.classList.add('visible');
       this._overlay.classList.add('visible');
     }
@@ -330,7 +315,6 @@ export class UIManager {
     if (this._leaderboardScreen && this._leaderboardListFull && this._overlay) {
       this._overlay.classList.remove('hidden');
       this._leaderboardScreen.classList.remove('hidden');
-      // Add visible class for transitions
       this._leaderboardScreen.classList.add('visible');
       this._overlay.classList.add('visible');
     }
@@ -343,7 +327,6 @@ export class UIManager {
       this._overlay.classList.remove('hidden');
       skinScreen.classList.remove('hidden');
       skinScreen.style.display = 'block';
-      // Add visible class for transitions
       skinScreen.classList.add('visible');
       this._overlay.classList.add('visible');
     }
@@ -356,7 +339,6 @@ export class UIManager {
       this._overlay.classList.remove('hidden');
       challengesScreen.classList.remove('hidden');
       challengesScreen.style.display = 'block';
-      // Add visible class for transitions
       challengesScreen.classList.add('visible');
       this._overlay.classList.add('visible');
     }
@@ -369,7 +351,6 @@ export class UIManager {
       this._overlay.classList.remove('hidden');
       statsScreen.classList.remove('hidden');
       statsScreen.style.display = 'block';
-      // Add visible class for transitions
       statsScreen.classList.add('visible');
       this._overlay.classList.add('visible');
     }
@@ -410,7 +391,7 @@ export class UIManager {
       this._leaderboardScreen.classList.add('hidden');
       this._leaderboardScreen.classList.remove('visible');
     }
-    
+
     // Hide modal screens
     const skinScreen = document.getElementById('skin-screen');
     if (skinScreen) {
@@ -418,21 +399,21 @@ export class UIManager {
       skinScreen.classList.remove('visible');
       skinScreen.style.display = 'none';
     }
-    
+
     const challengesScreen = document.getElementById('challenges-screen');
     if (challengesScreen) {
       challengesScreen.classList.add('hidden');
       challengesScreen.classList.remove('visible');
       challengesScreen.style.display = 'none';
     }
-    
+
     const statsScreen = document.getElementById('stats-screen');
     if (statsScreen) {
       statsScreen.classList.add('hidden');
       statsScreen.classList.remove('visible');
       statsScreen.style.display = 'none';
     }
-    
+
     // Hide pause button on all non-gameplay screens
     if (this._pauseButtonContainer) {
       this._pauseButtonContainer.style.display = 'none';
@@ -591,17 +572,7 @@ export class UIManager {
 
   public updateSkinGrid(skins: any[], selectedSkinId: string, unlockedSkins: string[], bestScore: number): void {
     const skinGrid = document.getElementById('skin-grid');
-    if (!skinGrid) {
-      console.error('[UI] Skin grid element not found');
-      return;
-    }
-
-    console.log('[UI] Updating skin grid with:', {
-      skinsCount: skins.length,
-      selectedSkinId,
-      unlockedSkins,
-      bestScore
-    });
+    if (!skinGrid) return;
 
     // Clear existing skins
     skinGrid.innerHTML = '';
@@ -631,12 +602,12 @@ export class UIManager {
           <div class="skin-name">${skin.name}</div>
           <div class="skin-status">
             ${isUnlocked
-              ? '✓ Unlocked'
-              : `<span class="lock-req">🔒 ${skin.unlockScore} pts</span>`
+              ? '&#10003; Unlocked'
+              : `<span class="lock-req">&#128274; ${skin.unlockScore} pts</span>`
             }
           </div>
         </div>
-        ${isSelected ? '<div class="selected-badge">★</div>' : ''}
+        ${isSelected ? '<div class="selected-badge">&#9733;</div>' : ''}
         ${canUnlock && !isUnlocked ? '<div class="unlock-ready">New!</div>' : ''}
       `;
 
@@ -665,10 +636,7 @@ export class UIManager {
 
   public updateChallengesList(challenges: any[], timeRemaining: { hours: number, minutes: number, seconds: number }): void {
     const challengesList = document.getElementById('challenges-list');
-    if (!challengesList) {
-      console.error('[UI] Challenges list element not found');
-      return;
-    }
+    if (!challengesList) return;
 
     // Update timer display
     const timerDisplay = document.getElementById('challenges-timer');
@@ -691,7 +659,7 @@ export class UIManager {
         <div class="challenge-info">
           <div class="challenge-title">
             ${challenge.title}
-            <button class="challenge-info-btn" data-challenge="${challengeId}" aria-label="Show challenge details">ℹ️</button>
+            <button class="challenge-info-btn" data-challenge="${challengeId}" aria-label="Show challenge details">&#8505;&#65039;</button>
           </div>
           <div class="challenge-details" id="${challengeId}">
             <div class="challenge-details-content">
@@ -727,31 +695,23 @@ export class UIManager {
 
   public updateChallengesDisplay(): void {
     try {
-      if (!this.dailyChallenges) {
-        console.warn('[UI] Daily challenges system not set');
-        return;
-      }
+      if (!this.dailyChallenges) return;
       const challenges = this.dailyChallenges.getChallenges();
       const timeRemaining = this.dailyChallenges.getTimeRemaining();
       this.updateChallengesList(challenges, timeRemaining);
       this._updateCoinDisplay();
     } catch (error) {
-      console.error('[UI] Error updating challenges display:', error);
-      // Don't let this error crash the app initialization
+      // Don't let this error crash the app
     }
   }
 
   public updateStatsFromManager(): void {
     try {
-      if (!this.statsManager) {
-        console.warn('[UI] Stats manager system not set');
-        return;
-      }
+      if (!this.statsManager) return;
       const stats = this.statsManager.getStats();
       this.updateStatsDisplay(stats);
     } catch (error) {
-      console.error('[UI] Error updating stats from manager:', error);
-      // Don't let this error crash the app initialization
+      // Don't let this error crash the app
     }
   }
 
@@ -790,12 +750,11 @@ export class UIManager {
       statElements['stat-obstacles-dodged']!.textContent = safeStats.totalObstaclesDodged.toString();
     }
     if (statElements['stat-play-time']) {
-      // Format seconds to "1h 5m" or "65m" format
       const totalSeconds = this._safeNumber(stats.totalPlayTime, 0);
       const hours = Math.floor(totalSeconds / 3600);
       const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const timeString = hours > 0 
-        ? `${hours}h ${minutes}m` 
+      const timeString = hours > 0
+        ? `${hours}h ${minutes}m`
         : `${minutes}m`;
       statElements['stat-play-time']!.textContent = timeString;
     }
@@ -824,7 +783,6 @@ export class UIManager {
     if (this._pauseScreen && this._overlay) {
       this._overlay.classList.remove('hidden');
       this._pauseScreen.classList.remove('hidden');
-      // Add visible class for transitions
       this._pauseScreen.classList.add('visible');
       this._overlay.classList.add('visible');
     }
@@ -903,12 +861,31 @@ export class UIManager {
     }
   }
 
+  private _lastNearMissTime = 0;
+
+  public showNearMissToast(): void {
+    const now = Date.now();
+    // Throttle near-miss toasts to once per second
+    if (now - this._lastNearMissTime < 1000) return;
+    this._lastNearMissTime = now;
+
+    const toast = document.createElement('div');
+    toast.className = 'near-miss-toast';
+    toast.textContent = 'Close call!';
+    document.body.appendChild(toast);
+
+    setTimeout(() => toast.classList.add('visible'), 10);
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 200);
+    }, 800);
+  }
+
   public showStreakNotification(streak: number): void {
-    // Create and show toast notification
     const toast = document.createElement('div');
     toast.className = 'streak-notification';
     toast.innerHTML = `
-      <span class="streak-fire">🔥</span>
+      <span class="streak-fire">&#128293;</span>
       <span class="streak-text">Streak x${streak}!</span>
     `;
     document.body.appendChild(toast);
@@ -920,12 +897,13 @@ export class UIManager {
     }, 3000);
   }
 
+  public updateSkinDisplay(): void {
+    // Delegated to main ToiletRunner class via callback
+  }
+
   private _updateCoinDisplay(): void {
-    if (!this.dailyChallenges) {
-      console.warn('[UI] Daily challenges system not set');
-      return;
-    }
-    
+    if (!this.dailyChallenges) return;
+
     const coinValueElement = document.getElementById('challenges-coin-value');
     if (coinValueElement) {
       const coinBalance = this.dailyChallenges.getCoinBalance();
