@@ -47,9 +47,11 @@ export class ScoreAnimator {
       this._isAnimating = false;
     } else {
       this._isAnimating = true;
-      // 10% lerp per frame for 500-800ms duration
+      // Frame-rate independent lerp: 1 - (1 - 0.1)^(delta * 60)
+      // At 60fps: factor ~0.1; at 30fps: factor ~0.19 (catches up faster)
+      const lerpFactor = 1 - Math.pow(0.9, delta * 60);
       const diff = this._targetScore - this._displayedScore;
-      this._displayedScore += diff * 0.1;
+      this._displayedScore += diff * lerpFactor;
     }
 
     this._updateUI(this._displayedScore);

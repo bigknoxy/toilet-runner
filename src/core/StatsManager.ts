@@ -52,15 +52,13 @@ export class StatsManager {
       if (data) {
         const parsed: UnifiedData = JSON.parse(data);
         if (parsed.stats) {
-          console.log('[StatsManager] Loaded existing stats');
           return parsed.stats;
         }
       }
     } catch (e) {
-      console.error('[StatsManager] Error loading stats:', e);
+      // Fall through to default stats
     }
 
-    console.log('[StatsManager] Creating new stats');
     return this._getDefaultStats();
   }
 
@@ -101,9 +99,8 @@ export class StatsManager {
         }
       };
       localStorage.setItem(StatsManager.STORAGE_KEY, JSON.stringify(data));
-      console.log('[StatsManager] Stats saved');
     } catch (e) {
-      console.error('[StatsManager] Error saving stats:', e);
+      // localStorage quota exceeded or unavailable - silently fail
     }
   }
 
@@ -114,8 +111,6 @@ export class StatsManager {
     if (!legacyStats && !legacyGameData) {
       return;
     }
-
-    console.log('[StatsManager] Migrating legacy data...');
 
     try {
       const oldStats = legacyStats ? JSON.parse(legacyStats) : {};
@@ -166,11 +161,8 @@ export class StatsManager {
 
       localStorage.removeItem('toiletRunner_stats');
       localStorage.removeItem('toiletRunner_gameData');
-
-      console.log('[StatsManager] Migration complete');
     } catch (e) {
-      console.error('[StatsManager] Migration failed:', e);
-      throw e;
+      // Migration failed - continue with current stats
     }
   }
 
@@ -185,11 +177,14 @@ export class StatsManager {
       backup['toiletRunner_gameData_backup'] = gameData;
     }
 
-    localStorage.setItem(
-      'toiletRunner_legacy_backup_' + Date.now(),
-      JSON.stringify(backup)
-    );
-    console.log('[StatsManager] Legacy data backed up');
+    try {
+      localStorage.setItem(
+        'toiletRunner_legacy_backup_' + Date.now(),
+        JSON.stringify(backup)
+      );
+    } catch (e) {
+      // Ignore backup failure
+    }
   }
 
   private _convertSkinsNumberToArray(count: number): string[] {
@@ -209,14 +204,12 @@ export class StatsManager {
       this._stats.gamesToday = 0;
       this._stats.lastPlayDate = today;
       this._save();
-      console.log('[StatsManager] Daily reset performed');
     }
   }
 
   public startSession(): void {
     this._sessionStartTime = Date.now();
     this._sessionObstaclesDodged = 0;
-    console.log('[StatsManager] Session started');
   }
 
   public endSession(sessionStats: SessionStats): void {
@@ -231,16 +224,13 @@ export class StatsManager {
 
     if (sessionStats.score > this._stats.highestScore) {
       this._stats.highestScore = sessionStats.score;
-      console.log('[StatsManager] New highest score:', sessionStats.score);
     }
 
     if (sessionStats.distance > this._stats.longestRun) {
       this._stats.longestRun = sessionStats.distance;
-      console.log('[StatsManager] New longest run:', sessionStats.distance);
     }
 
     this._save();
-    console.log('[StatsManager] Session ended');
   }
 
   public updateHighestScore(score: number): void {
@@ -262,12 +252,10 @@ export class StatsManager {
       if (this._stats.currentStreakDate !== today) {
         this._stats.currentStreak++;
         this._stats.currentStreakDate = today;
-        console.log('[StatsManager] Streak incremented to:', this._stats.currentStreak);
       }
     } else {
       this._stats.currentStreak = 0;
       this._stats.currentStreakDate = today;
-      console.log('[StatsManager] Streak reset');
     }
 
     this._save();
@@ -275,13 +263,11 @@ export class StatsManager {
 
   public selectSkin(skinId: string): boolean {
     if (!this.isSkinUnlocked(skinId)) {
-      console.warn('[StatsManager] Cannot select locked skin:', skinId);
       return false;
     }
 
     this._stats.selectedSkin = skinId;
     this._save();
-    console.log('[StatsManager] Selected skin:', skinId);
     return true;
   }
 
@@ -290,7 +276,6 @@ export class StatsManager {
       this._stats.unlockedSkins.push(skinId);
       this._stats.unlockedSkins.sort();
       this._save();
-      console.log('[StatsManager] Unlocked skin:', skinId);
     }
   }
 
@@ -338,12 +323,11 @@ export class StatsManager {
   }
 
   public getSuccessRate(): number {
-    if (this._stats.totalRuns === 0) return 0;
+    if (this._stats.totalRuns === 0 || this._stats.totalDistance === 0) return 0;
     return Math.round((this._stats.longestRun / this._stats.totalDistance) * 100);
   }
 
   public resetAllStats(): void {
-    console.log('[StatsManager] Resetting all stats');
     this._stats = this._getDefaultStats();
     this._save();
   }
@@ -352,7 +336,6 @@ export class StatsManager {
     this._stats.gamesToday = 0;
     this._stats.lastPlayDate = this._getTodayString();
     this._save();
-    console.log('[StatsManager] Reset today stats');
   }
 }
 
@@ -360,7 +343,6 @@ export function rollbackToLegacyData(): boolean {
   try {
     const keys = Object.keys(localStorage).filter(k => k.startsWith('toiletRunner_legacy_backup_'));
     if (keys.length === 0) {
-      console.error('[Rollback] No backup found');
       return false;
     }
 
@@ -377,10 +359,8 @@ export function rollbackToLegacyData(): boolean {
 
     localStorage.removeItem('toiletRunner_unifiedData');
 
-    console.log('[Rollback] Successful');
     return true;
   } catch (e) {
-    console.error('[Rollback] Failed:', e);
     return false;
   }
 }

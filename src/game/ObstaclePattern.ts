@@ -248,20 +248,18 @@ export class PatternPool {
     );
   }
 
-  static analyzeClearLaneDistribution(): void {
-    console.log('📊 Clear Lane Distribution Analysis:');
-    
+  static analyzeClearLaneDistribution(): Record<string, Record<number, number>> {
+    const result: Record<string, Record<number, number>> = {};
     for (const difficulty of ['EASY', 'MEDIUM', 'HARD', 'EXTREME'] as Difficulty[]) {
       const patterns = this.getPatternsByDifficulty(difficulty);
-      const laneCounts = { 0: 0, 1: 0, 2: 0 };
-      
+      const laneCounts: Record<number, number> = { 0: 0, 1: 0, 2: 0 };
       for (const pattern of patterns) {
         if (pattern.guaranteedClearLane !== undefined) {
           laneCounts[pattern.guaranteedClearLane]++;
         }
       }
-      
-      console.log(`  ${difficulty}: Lane 0: ${laneCounts[0]}, Lane 1: ${laneCounts[1]}, Lane 2: ${laneCounts[2]}`);
+      result[difficulty] = laneCounts;
     }
+    return result;
   }
 }

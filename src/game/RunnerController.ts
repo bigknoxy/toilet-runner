@@ -100,8 +100,6 @@ export class RunnerController {
       const newTexture = this.createTPTexture(skin);
       this._tpMaterial.map = newTexture;
       
-      console.log(`[Runner] Skin updated to ${skinId} with texture type:`, 
-                  skin.gradient ? 'gradient' : 'solid');
     }
   }
 

@@ -7,6 +7,7 @@ export class AudioManager {
   private _bgmGain: GainNode | null = null;
   private _speed: number = 10;
   private _isPlaying: boolean = false;
+  private _beatTimeoutIds: number[] = [];
 
   private ensureContext(): void {
     if (!this._context) {
@@ -40,6 +41,9 @@ export class AudioManager {
       } catch (e) {}
     });
     this._bgmOscillators = [];
+    // Clear all pending beat timeouts to prevent leaked callbacks
+    this._beatTimeoutIds.forEach(id => clearTimeout(id));
+    this._beatTimeoutIds = [];
   }
 
   private _updateBackgroundMusic(): void {
@@ -70,7 +74,7 @@ export class AudioManager {
 
     // Create rhythmic beeps based on speed
     const createBeat = (delay: number, freq: number) => {
-      setTimeout(() => {
+      const timeoutId = window.setTimeout(() => {
         if (!this._isPlaying || !this._context) return;
 
         const osc = this._context.createOscillator();
@@ -98,6 +102,7 @@ export class AudioManager {
           createBeat(beatInterval, freq);
         }
       }, delay * 1000);
+      this._beatTimeoutIds.push(timeoutId);
     };
 
     // Start rhythmic pattern

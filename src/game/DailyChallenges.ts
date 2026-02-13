@@ -114,7 +114,7 @@ export class DailyChallengeSystem {
         this._coinBalance = parseInt(coins, 10) || 0;
       }
     } catch (e) {
-      console.log('No challenge data found');
+      // No challenge data found - use defaults
     }
   }
 
@@ -127,7 +127,7 @@ export class DailyChallengeSystem {
       localStorage.setItem('toiletRunner_challenges', JSON.stringify(data));
       localStorage.setItem('toiletRunner_coins', this._coinBalance.toString());
     } catch (e) {
-      console.log('Failed to save challenges');
+      // Failed to save challenges - localStorage may be full
     }
   }
 
