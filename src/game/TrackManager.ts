@@ -23,6 +23,9 @@ export class TrackManager {
   private lineMesh: THREE.InstancedMesh;
   private nextLineIndex: number = 0;
   private freeLineIndices: number[] = [];
+  private floorPlane: THREE.Mesh | null = null;
+  private floorTexture: THREE.Texture | null = null;
+  private scrollOffset: number = 0;
   private tempMatrix: THREE.Matrix4;
   private tempVector: THREE.Vector3;
 
@@ -117,10 +120,16 @@ export class TrackManager {
   update(delta: number, speed: number): void {
     const moveDelta = speed * delta;
 
+    // Scroll the floor texture
+    if (this.floorTexture) {
+      this.scrollOffset += moveDelta;
+      this.floorTexture.offset.y = this.scrollOffset / 2.5;
+    }
+
     // Move all segments toward player (+Z)
     for (const segment of this.segments) {
       segment.z += moveDelta;
-      
+
       // Update InstancedMesh matrix
       this.instancedMesh.getMatrixAt(segment.instanceIndex, this.tempMatrix);
       this.tempVector.setFromMatrixPosition(this.tempMatrix);
@@ -219,6 +228,12 @@ export class TrackManager {
     this.freeLineIndices = [];
     this.lineMesh.count = 0;
 
+    // Reset floor scroll
+    this.scrollOffset = 0;
+    if (this.floorTexture) {
+      this.floorTexture.offset.y = 0;
+    }
+
     // Reinitialize segments at starting positions
     this.initializeSegments();
   }
@@ -230,11 +245,33 @@ export class TrackManager {
     this.scene.remove(this.lineMesh);
     this.lineMesh.geometry.dispose();
     (this.lineMesh.material as THREE.Material).dispose();
+    if (this.floorPlane) {
+      this.scene.remove(this.floorPlane);
+      this.floorPlane.geometry.dispose();
+      (this.floorPlane.material as THREE.Material).dispose();
+    }
   }
 
   applyTileTexture(texture: THREE.CanvasTexture): void {
-    const material = new THREE.MeshLambertMaterial({ map: texture });
-    this.instancedMesh.material = material;
-    this.instancedMesh.material.needsUpdate = true;
+    // Create a static floor plane with a scrolling texture
+    const FLOOR_LENGTH = 120;
+    const floorWidth = LANE_WIDTH * 3 + 6;
+
+    const clonedTexture = texture.clone();
+    clonedTexture.needsUpdate = true;
+    clonedTexture.wrapS = THREE.RepeatWrapping;
+    clonedTexture.wrapT = THREE.RepeatWrapping;
+    clonedTexture.repeat.set(4, FLOOR_LENGTH / 2.5);
+    this.floorTexture = clonedTexture;
+
+    const geometry = new THREE.PlaneGeometry(floorWidth, FLOOR_LENGTH);
+    const material = new THREE.MeshLambertMaterial({ map: clonedTexture });
+    this.floorPlane = new THREE.Mesh(geometry, material);
+    this.floorPlane.rotation.x = -Math.PI / 2;
+    this.floorPlane.position.set(0, 0.01, -FLOOR_LENGTH / 2 + DESPAWN_DISTANCE);
+    this.scene.add(this.floorPlane);
+
+    // Hide the InstancedMesh segments — the floor plane provides the visual surface now
+    this.instancedMesh.visible = false;
   }
 }
