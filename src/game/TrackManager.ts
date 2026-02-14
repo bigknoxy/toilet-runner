@@ -43,9 +43,9 @@ export class TrackManager {
     // Lane line markings
     const lineGeometry = new THREE.PlaneGeometry(0.12, SEGMENT_LENGTH);
     const lineMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
+      color: 0xC8B8A8,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.5,
       depthWrite: false,
       polygonOffset: true,
       polygonOffsetFactor: -1,
