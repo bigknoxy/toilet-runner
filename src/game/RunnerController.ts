@@ -201,6 +201,7 @@ export class RunnerController {
   }
 
   moveLeft(): void {
+    if (this._isDead) return;
     if (this._currentLaneIndex > -1) {
       this._currentLaneIndex--;
       this._targetX = this._currentLaneIndex * LANE_WIDTH;
@@ -211,6 +212,7 @@ export class RunnerController {
   }
 
   moveRight(): void {
+    if (this._isDead) return;
     if (this._currentLaneIndex < 1) {
       this._currentLaneIndex++;
       this._targetX = this._currentLaneIndex * LANE_WIDTH;
