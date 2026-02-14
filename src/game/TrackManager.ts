@@ -5,12 +5,13 @@ const SEGMENT_LENGTH = 10;
 const VISIBLE_SEGMENTS = 8;
 // Reduced from 80 to 60 - obstacles spawn closer for better visibility
 const SPAWN_DISTANCE = 60;
-const DESPAWN_DISTANCE = 20;
+const DESPAWN_DISTANCE = 30;
 
 interface TrackSegment {
   mesh: THREE.InstancedMesh;
   z: number;
   instanceIndex: number;
+  lineIndices: number[];
 }
 
 export class TrackManager {
@@ -19,6 +20,9 @@ export class TrackManager {
   private instancedMesh: THREE.InstancedMesh;
   private nextInstanceIndex: number = 0;
   private freeInstanceIndices: number[] = [];
+  private lineMesh: THREE.InstancedMesh;
+  private nextLineIndex: number = 0;
+  private freeLineIndices: number[] = [];
   private tempMatrix: THREE.Matrix4;
   private tempVector: THREE.Vector3;
 
@@ -35,6 +39,21 @@ export class TrackManager {
     const maxInstances = VISIBLE_SEGMENTS * 2; // Buffer for active segments
     this.instancedMesh = new THREE.InstancedMesh(geometry, material, maxInstances);
     this.scene.add(this.instancedMesh);
+
+    // Lane line markings
+    const lineGeometry = new THREE.PlaneGeometry(0.12, SEGMENT_LENGTH);
+    const lineMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+    });
+    this.lineMesh = new THREE.InstancedMesh(lineGeometry, lineMaterial, maxInstances * 2);
+    this.lineMesh.count = 0;
+    this.scene.add(this.lineMesh);
 
     // Initialize track segments
     this.initializeSegments();
@@ -67,11 +86,29 @@ export class TrackManager {
     this.tempMatrix.makeTranslation(this.tempVector.x, this.tempVector.y, this.tempVector.z);
     this.instancedMesh.setMatrixAt(instanceIndex, this.tempMatrix);
 
+    // Create lane line instances (2 per segment at x = -1.5 and x = +1.5)
+    const lineIndices: number[] = [];
+    for (const lx of [-LANE_WIDTH / 2, LANE_WIDTH / 2]) {
+      let li: number;
+      if (this.freeLineIndices.length > 0) {
+        li = this.freeLineIndices.pop()!;
+      } else {
+        li = this.nextLineIndex++;
+      }
+      this.tempMatrix.makeRotationX(-Math.PI / 2);
+      this.tempMatrix.setPosition(lx, 0.01, z);
+      this.lineMesh.setMatrixAt(li, this.tempMatrix);
+      lineIndices.push(li);
+    }
+    this.lineMesh.count = Math.max(this.lineMesh.count, this.nextLineIndex);
+    this.lineMesh.instanceMatrix.needsUpdate = true;
+
     // Track segment
     const segment: TrackSegment = {
       mesh: this.instancedMesh,
       z: z,
-      instanceIndex: instanceIndex
+      instanceIndex: instanceIndex,
+      lineIndices: lineIndices,
     };
 
     this.segments.push(segment);
@@ -92,8 +129,21 @@ export class TrackManager {
       this.instancedMesh.setMatrixAt(segment.instanceIndex, this.tempMatrix);
     }
 
+    // Move lane lines alongside track segments
+    for (const segment of this.segments) {
+      for (const li of segment.lineIndices) {
+        this.lineMesh.getMatrixAt(li, this.tempMatrix);
+        this.tempVector.setFromMatrixPosition(this.tempMatrix);
+        this.tempVector.z = segment.z;
+        this.tempMatrix.makeRotationX(-Math.PI / 2);
+        this.tempMatrix.setPosition(this.tempVector.x, 0.01, this.tempVector.z);
+        this.lineMesh.setMatrixAt(li, this.tempMatrix);
+      }
+    }
+
     // Update InstancedMesh matrices
     this.instancedMesh.instanceMatrix.needsUpdate = true;
+    this.lineMesh.instanceMatrix.needsUpdate = true;
 
     // Check spawn/despawn conditions
     this.handleSpawnDespawn();
@@ -129,6 +179,9 @@ export class TrackManager {
     if (rearmostZ > DESPAWN_DISTANCE) {
       const segment = this.segments[rearmostIndex];
       this.freeInstanceIndices.push(segment.instanceIndex);
+      for (const li of segment.lineIndices) {
+        this.freeLineIndices.push(li);
+      }
       this.segments.splice(rearmostIndex, 1);
     }
   }
@@ -161,6 +214,10 @@ export class TrackManager {
     // Clear all segments
     this.segments = [];
     this.nextInstanceIndex = 0;
+    this.freeInstanceIndices = [];
+    this.nextLineIndex = 0;
+    this.freeLineIndices = [];
+    this.lineMesh.count = 0;
 
     // Reinitialize segments at starting positions
     this.initializeSegments();
@@ -170,6 +227,9 @@ export class TrackManager {
     this.scene.remove(this.instancedMesh);
     this.instancedMesh.geometry.dispose();
     (this.instancedMesh.material as THREE.Material).dispose();
+    this.scene.remove(this.lineMesh);
+    this.lineMesh.geometry.dispose();
+    (this.lineMesh.material as THREE.Material).dispose();
   }
 
   applyTileTexture(texture: THREE.CanvasTexture): void {
