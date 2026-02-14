@@ -25,6 +25,7 @@ import { CameraShake } from './game/CameraShake';
 import { ScoreAnimator } from './ui/ScoreAnimator';
 import { HUD } from './ui/HUD';
 import { TrailRenderer } from './game/TrailRenderer';
+import { SpeedLines } from './game/visual/SpeedLines';
 
 const BASE_SPEED = 10;
 const SPEED_INCREASE = 0.5;
@@ -61,12 +62,16 @@ class ToiletRunner {
   private currentStreak = 0;
   private challengesNeedUpdate = false;
   private passedObstacles: Set<string> = new Set();
+  private _isDying: boolean = false;
+  private _deathTimer: number = 0;
+  private readonly _deathDuration = 1.0;
 
   private postProcessing!: PostProcessingManager;
   private dustParticles!: ParticleSystem;
   private sparkleParticles!: ParticleSystem;
   private impactParticles!: ParticleSystem;
   private coinParticles!: ParticleSystem;
+  private speedLines!: SpeedLines;
   private dustEmissionTimer = 0;
 
   constructor() {
@@ -201,6 +206,9 @@ class ToiletRunner {
     // Initialize trail renderer
     this.trailRenderer = new TrailRenderer(this.runner.getMesh(), scene);
 
+    // Speed lines effect
+    this.speedLines = new SpeedLines(scene);
+
     this.postProcessing = new PostProcessingManager(renderer, scene, camera);
     this.setupPostProcessing();
   }
@@ -302,6 +310,28 @@ class ToiletRunner {
     PerformanceManager.updateFPS(delta);
 
     if (this.currentGameState === GameState.PLAYING) {
+      // Death slow-motion sequence
+      if (this._isDying) {
+        this._deathTimer += delta;
+        if (this._deathTimer >= this._deathDuration) {
+          this._isDying = false;
+          this.endGame();
+          return;
+        }
+        // Scale delta for slow-mo, only update visuals
+        const slowDelta = delta * 0.15;
+        const gameSpeed = BASE_SPEED + Math.floor(this.score / 10) * SPEED_INCREASE;
+        this.runner.update(slowDelta);
+        this.track.update(slowDelta, gameSpeed);
+        this.dustParticles.update(slowDelta);
+        this.sparkleParticles.update(slowDelta);
+        this.impactParticles.update(slowDelta);
+        this.coinParticles.update(slowDelta);
+        this.cameraShake.update(slowDelta);
+        this.sceneManager.render();
+        return;
+      }
+
       const speedIncrease = Math.floor(this.score / 10) * SPEED_INCREASE;
       const gameSpeed = BASE_SPEED + speedIncrease;
 
@@ -339,17 +369,18 @@ class ToiletRunner {
           const isNearMiss = lateralDist < 2.5 && lateralDist > 0.5;
 
           if (isNearMiss) {
-            // Enhanced feedback for near miss
-            this.ui.showNearMissToast();
+            this.ui.showScorePopup('CLOSE!', true);
             this.runner.triggerSuccessBounce();
+          } else if (lateralDist <= 0.5) {
+            this.ui.showScorePopup('+10', false);
           }
 
-          // Trigger celebration effects for successful dodge
-          const dodgePos = new THREE.Vector3(obstacle.x, playerPos.y, playerPos.z + 1);
-          this.sparkleParticles.emitSparkle(dodgePos);
-
-          // Light camera shake for successful dodge
-          this.cameraShake.shake(0.03, 0.1);
+          // Trigger celebration effects only for same-lane or near-miss dodges
+          if (lateralDist <= 2.5) {
+            const dodgePos = new THREE.Vector3(obstacle.x, playerPos.y, playerPos.z + 1);
+            this.sparkleParticles.emitSparkle(dodgePos);
+            this.cameraShake.shake(0.03, 0.1);
+          }
         }
       }
 
@@ -393,9 +424,15 @@ class ToiletRunner {
       // Update trail effect
       this.trailRenderer.update(playerPosition, gameSpeed, this.runner.isChangingLanes());
 
-      if (this.collision.checkPlayerVsObstacles(this.runner.getMesh(), this.obstacles)) {
+      // Update speed lines
+      this.speedLines.update(delta, gameSpeed);
+
+      if (!this._isDying && this.collision.checkPlayerVsObstacles(this.runner.getMesh(), this.obstacles)) {
         this.handleCollision();
-        this.endGame();
+        this.runner.startDeathTumble();
+        this._isDying = true;
+        this._deathTimer = 0;
+        this.showDeathFlash();
       }
 
       const prevScore = Math.floor(this.score);
@@ -441,10 +478,19 @@ class ToiletRunner {
 
   private handleCollision(): void {
     this.audioManager.playCollision();
-    this.cameraShake.shake(0.3, 0.4); // Heavy shake for collision
+    this.cameraShake.shake(0.3, 0.4);
 
     const playerPos = this.runner.getPosition();
     this.impactParticles.emitImpact(playerPos);
+    this.impactParticles.emitImpact(playerPos); // Double impact
+  }
+
+  private showDeathFlash(): void {
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;inset:0;background:white;opacity:0.6;z-index:9000;pointer-events:none;transition:opacity 0.3s ease-out;';
+    document.body.appendChild(flash);
+    requestAnimationFrame(() => { flash.style.opacity = '0'; });
+    setTimeout(() => flash.remove(), 400);
   }
 
   private handleScoreMilestone(): void {
@@ -570,6 +616,7 @@ class ToiletRunner {
     this.cameraManager.reset();
     this.cameraShake.reset();
     this.trailRenderer.reset();
+    this.speedLines.reset();
     this.dustParticles.reset();
     this.sparkleParticles.reset();
     this.impactParticles.reset();
@@ -580,6 +627,8 @@ class ToiletRunner {
     this.currentStreak = 0;
     this.challengesNeedUpdate = false;
     this.dustEmissionTimer = 0;
+    this._isDying = false;
+    this._deathTimer = 0;
     this.passedObstacles.clear();
     this.audioManager.setLastScoreMilestone(0);
     this.scoreAnimator.reset();
