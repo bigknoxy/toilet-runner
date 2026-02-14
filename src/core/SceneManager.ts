@@ -19,7 +19,7 @@ export class SceneManager {
 
   private createScene(): THREE.Scene {
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0xcccccc, 20, 100);
+    scene.fog = new THREE.Fog(0x87CEEB, 30, 120);
     return scene;
   }
 
@@ -37,7 +37,7 @@ export class SceneManager {
       powerPreference: 'high-performance',
       alpha: true
     });
-    renderer.setClearColor(0xcccccc, 1);
+    renderer.setClearColor(0x87CEEB, 1);
 
     const pixelRatio = Math.min(window.devicePixelRatio, PIXEL_RATIO_MAX);
     renderer.setPixelRatio(pixelRatio);
@@ -91,10 +91,10 @@ export class SceneManager {
   }
 
   private setupLights(): void {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    this.scene.add(ambientLight);
+    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0xFFE4C4, 0.7);
+    this.scene.add(hemiLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    const directionalLight = new THREE.DirectionalLight(0xFFF8DC, 0.6);
     directionalLight.position.set(5, 10, 5);
     this.scene.add(directionalLight);
   }

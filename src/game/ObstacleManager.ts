@@ -39,8 +39,9 @@ export class ObstacleManager {
   private _eyeMaterial: THREE.MeshBasicMaterial;
   private _faceGeometry?: THREE.PlaneGeometry;
   private _faceMaterial?: THREE.MeshBasicMaterial;
-  private _bodyGeometry: THREE.SphereGeometry;
-  private _tipGeometry: THREE.ConeGeometry;
+  private _baseRingGeometry: THREE.SphereGeometry;
+  private _midRingGeometry: THREE.SphereGeometry;
+  private _tipGeometry: THREE.SphereGeometry;
   private _eyeGeometry: THREE.SphereGeometry;
   private _smileGeometry: THREE.TorusGeometry;
 
@@ -65,15 +66,17 @@ export class ObstacleManager {
     }
 
     // Materials
-    this._bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x6B4423 });
+    this._bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x8B5E3C });
     this._bodyMaterial.side = THREE.FrontSide;
     this._eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
     this._eyeMaterial.side = THREE.FrontSide;
 
-    // Optimized geometries (reduced polygons for mobile)
-    this._bodyGeometry = new THREE.SphereGeometry(0.7, 12, 8);
-    this._bodyGeometry.scale(1, 0.7, 1);
-    this._tipGeometry = new THREE.ConeGeometry(0.35, 0.6, 8);
+    // Coiled poop geometries (3-tier stack like the emoji)
+    this._baseRingGeometry = new THREE.SphereGeometry(0.55, 10, 8);
+    this._baseRingGeometry.scale(1, 0.5, 1);
+    this._midRingGeometry = new THREE.SphereGeometry(0.45, 10, 8);
+    this._midRingGeometry.scale(1, 0.5, 1);
+    this._tipGeometry = new THREE.SphereGeometry(0.2, 8, 6);
     this._eyeGeometry = new THREE.SphereGeometry(0.1, 6, 6);
     this._smileGeometry = new THREE.TorusGeometry(0.18, 0.035, 6, 6, Math.PI);
 
@@ -83,56 +86,62 @@ export class ObstacleManager {
 
   private createObstacleGroup(): THREE.Group {
     const group = new THREE.Group();
-    
-    // Body (casts shadows)
-    const body = new THREE.Mesh(this._bodyGeometry, this._bodyMaterial);
-    body.position.set(0, 0.3, 0);
-    body.castShadow = true;
-    body.receiveShadow = true;
-    group.add(body);
-    
-    // Tip (casts shadows)
+
+    // Bottom ring — wide base
+    const base = new THREE.Mesh(this._baseRingGeometry, this._bodyMaterial);
+    base.position.set(0, 0.2, 0);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    group.add(base);
+
+    // Middle ring — offset coil
+    const mid = new THREE.Mesh(this._midRingGeometry, this._bodyMaterial);
+    mid.position.set(0.08, 0.5, 0);
+    mid.castShadow = true;
+    mid.receiveShadow = true;
+    group.add(mid);
+
+    // Top tip — rounded peak
     const tip = new THREE.Mesh(this._tipGeometry, this._bodyMaterial);
-    tip.rotation.x = -Math.PI / 2;
-    tip.position.set(0, 0.85, 0);
+    tip.position.set(-0.05, 0.75, 0);
     tip.castShadow = true;
     tip.receiveShadow = true;
     group.add(tip);
-    
+
     // Emoji face (if enabled, replaces eyes/smile)
     // Each obstacle gets its own cloned geometry to avoid shared UV mutation
     if (this._emojiFacesEnabled && this._faceGeometry && this._faceMaterial) {
       const faceGeo = this._faceGeometry.clone();
       const face = new THREE.Mesh(faceGeo, this._faceMaterial);
-      face.position.set(0, 0.65, 0.6);
+      face.position.set(0.08, 0.5, 0.5);
       face.castShadow = false;
       face.receiveShadow = false;
       face.userData.isEmojiFace = true;
       face.userData.emojiIndex = Math.floor(Math.random() * 5);
       group.add(face);
     } else {
-      // Eyes (no shadows - optimization)
+      // Eyes centered on middle ring
       const leftEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
-      leftEye.position.set(-0.22, 0.65, 0.55);
+      leftEye.position.set(-0.14, 0.55, 0.45);
       leftEye.castShadow = false;
       leftEye.receiveShadow = false;
       group.add(leftEye);
-      
+
       const rightEye = new THREE.Mesh(this._eyeGeometry, this._eyeMaterial);
-      rightEye.position.set(0.22, 0.65, 0.55);
+      rightEye.position.set(0.30, 0.55, 0.45);
       rightEye.castShadow = false;
       rightEye.receiveShadow = false;
       group.add(rightEye);
-      
-      // Smile (no shadows - optimization)
+
+      // Smile centered on middle ring
       const smile = new THREE.Mesh(this._smileGeometry, this._eyeMaterial);
-      smile.position.set(0, 0.45, 0.65);
+      smile.position.set(0.08, 0.40, 0.50);
       smile.rotation.x = Math.PI / 4;
       smile.castShadow = false;
       smile.receiveShadow = false;
       group.add(smile);
     }
-    
+
     return group;
   }
 

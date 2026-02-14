@@ -33,7 +33,7 @@ export class TrackManager {
 
     // Create ground geometry spanning all 3 lanes with margins
     const geometry = new THREE.BoxGeometry(LANE_WIDTH * 3 + 6, 0.5, SEGMENT_LENGTH);
-    const material = new THREE.MeshLambertMaterial({ color: 0x88cc88 });
+    const material = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
 
     // Create InstancedMesh for performance (1 draw call)
     const maxInstances = VISIBLE_SEGMENTS * 2; // Buffer for active segments

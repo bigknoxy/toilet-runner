@@ -20,12 +20,12 @@ export class MaterialFactory {
     const config = this.getMaterialConfig();
     const mat = this.quality === PerformanceTier.LOW
       ? new THREE.MeshLambertMaterial({
-          color: 0x88cc88,
+          color: 0xFFFFFF,
           map: texture,
           side: THREE.FrontSide
         })
       : new THREE.MeshStandardMaterial({
-          color: 0x88cc88,
+          color: 0xFFFFFF,
           map: texture,
           roughness: config.roughness,
           metalness: config.metalness,
@@ -45,14 +45,14 @@ export class MaterialFactory {
     const config = this.getMaterialConfig();
     const mat = this.quality === PerformanceTier.LOW
       ? new THREE.MeshLambertMaterial({
-          color: 0x6B4423,
+          color: 0x8B5E3C,
           side: THREE.FrontSide
         })
       : new THREE.MeshStandardMaterial({
-          color: 0x6B4423,
+          color: 0x8B5E3C,
           roughness: config.roughness + 0.2,
           metalness: 0,
-          emissive: 0x3D2817,
+          emissive: 0x4A3220,
           emissiveIntensity: 0.2,
           side: THREE.FrontSide
         });
