@@ -11,7 +11,9 @@ const PLAYER_Z = -4;
 // Character personality animation constants
 const IDLE_WOBBLE_SPEED = 3;      // Speed of idle wobble
 const IDLE_WOBBLE_AMPLITUDE = 0.05;  // Angle of idle wobble (radians)
-const SQUASH_STRETCH = 0;  // Disable squash/stretch during lane changes
+const TILT_ANGLE = 0.25;          // Max tilt radians (~14 degrees)
+const TILT_LERP_SPEED = 10;       // How fast tilt engages
+const TILT_RETURN_SPEED = 6;      // How fast tilt returns to 0
 const SUCCESS_BOUNCE = 0.2;       // Bounce height on successful dodge
 const NEAR_OBSTACLE_SPEED = 8;    // Wobble speed when near obstacle
 
@@ -30,6 +32,8 @@ export class RunnerController {
   private _idleTime: number = 0;  // Track idle time for continuous wobble
   private _scaleY: number = 1;    // For squash/stretch effect
   private _scaleX: number = 1;
+  private _tiltAngle: number = 0;
+  private _isDead: boolean = false;
   private _characterCustomization: CharacterCustomization;
   private _tpMaterial: THREE.MeshLambertMaterial;
   private _textureCache: Map<string, THREE.CanvasTexture> = new Map();
@@ -201,7 +205,8 @@ export class RunnerController {
       this._currentLaneIndex--;
       this._targetX = this._currentLaneIndex * LANE_WIDTH;
       this._isChangingLanes = true;
-      // No bounce or wobble - smooth lane change only
+      this._scaleX = 0.9;
+      this._scaleY = 1.1;
     }
   }
 
@@ -210,11 +215,19 @@ export class RunnerController {
       this._currentLaneIndex++;
       this._targetX = this._currentLaneIndex * LANE_WIDTH;
       this._isChangingLanes = true;
-      // No bounce or wobble - smooth lane change only
+      this._scaleX = 0.9;
+      this._scaleY = 1.1;
     }
   }
 
   update(delta: number): void {
+    // Death tumble animation
+    if (this._isDead) {
+      this._tpMesh.rotation.x += delta * 8;
+      this._mesh.position.y = Math.max(this._mesh.position.y - delta * 2, -0.5);
+      return;
+    }
+
     this._currentX = THREE.MathUtils.lerp(this._currentX, this._targetX, LERP_SPEED * delta);
     this._mesh.position.x = this._currentX;
 
@@ -227,24 +240,36 @@ export class RunnerController {
       }
     }
 
+    // Tilt during lane changes
+    const dx = this._targetX - this._currentX;
+    if (this._isChangingLanes && Math.abs(dx) > 0.05) {
+      const targetTilt = -Math.sign(dx) * TILT_ANGLE;
+      this._tiltAngle = THREE.MathUtils.lerp(this._tiltAngle, targetTilt, TILT_LERP_SPEED * delta);
+    } else {
+      this._tiltAngle = THREE.MathUtils.lerp(this._tiltAngle, 0, TILT_RETURN_SPEED * delta);
+    }
+
     // Scale normalization (smooth transition to normal)
     this._scaleY = THREE.MathUtils.lerp(this._scaleY, 1, delta * 5);
     this._scaleX = THREE.MathUtils.lerp(this._scaleX, 1, delta * 5);
 
     // Idle personality: gentle wobble animation (only when NOT changing lanes)
+    let wobbleZ = 0;
     if (!this._isChangingLanes) {
       this._idleTime += delta;
       const wobbleSpeed = this._isNearObstacle ? NEAR_OBSTACLE_SPEED : IDLE_WOBBLE_SPEED;
       const wobbleAmp = this._isNearObstacle ? IDLE_WOBBLE_AMPLITUDE * 1.5 : IDLE_WOBBLE_AMPLITUDE;
-      
-      // Apply wobble rotation to the TP mesh
-      this._tpMesh.rotation.z = Math.sin(this._idleTime * wobbleSpeed) * wobbleAmp;
-      
+
+      wobbleZ = Math.sin(this._idleTime * wobbleSpeed) * wobbleAmp;
+
       // Slight bounce when near obstacle (nervous animation)
       if (this._isNearObstacle) {
         yOffset += Math.sin(this._idleTime * 15) * 0.03;
       }
     }
+
+    // Combine wobble + tilt
+    this._tpMesh.rotation.z = wobbleZ + this._tiltAngle;
 
     // Success bounce effect
     if (this._successBounce > 0.01) {
@@ -254,7 +279,7 @@ export class RunnerController {
     }
 
     this._mesh.position.y = yOffset;
-    
+
     // Apply squash/stretch scale to the mesh
     this._mesh.scale.set(this._scaleX, this._scaleY, this._scaleX);
   }
@@ -294,6 +319,10 @@ export class RunnerController {
     this._successBounce = SUCCESS_BOUNCE;
   }
 
+  startDeathTumble(): void {
+    this._isDead = true;
+  }
+
   reset(): void {
     this._currentLaneIndex = 0;
     this._currentX = 0;
@@ -306,8 +335,10 @@ export class RunnerController {
     this._idleTime = 0;
     this._scaleY = 1;
     this._scaleX = 1;
+    this._tiltAngle = 0;
+    this._isDead = false;
     this._mesh.position.set(0, 0.5, PLAYER_Z);
-    this._tpMesh.rotation.z = 0;
+    this._tpMesh.rotation.set(0, 0, 0);
     this._mesh.scale.set(1, 1, 1);
     
     // Restore selected skin

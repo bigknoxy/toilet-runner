@@ -108,7 +108,7 @@ export class UIManager {
       });
     }
 
-    // Global keyboard escape - perform action based on current state
+    // Global keyboard shortcuts based on current state
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         if (this.currentGameState === GameState.PAUSED) {
@@ -118,6 +118,10 @@ export class UIManager {
         } else if (this.currentGameState === GameState.LEADERBOARD) {
           if (this._onBackToGameOver) this._onBackToGameOver();
         }
+      }
+      if (e.key === ' ' && this.currentGameState === GameState.GAMEOVER) {
+        e.preventDefault();
+        if (this._onRestart) this._onRestart();
       }
     });
 
@@ -286,12 +290,40 @@ export class UIManager {
     }
   }
 
+  private _countUpRaf: number = 0;
+
   public showGameOverScreen(finalScore: number, message?: string, isNewBest?: boolean): void {
     this.hideAllScreens();
     if (this._gameOverScreen && this._finalScore && this._overlay) {
       this._overlay.classList.remove('hidden');
       this._gameOverScreen.classList.remove('hidden');
-      this._finalScore.textContent = `Score: ${Math.floor(finalScore)}`;
+
+      // Animated count-up
+      cancelAnimationFrame(this._countUpRaf);
+      const target = Math.floor(finalScore);
+      const duration = Math.min(1500, Math.max(500, target * 5));
+      const startTime = performance.now();
+      this._finalScore.classList.remove('score-counted');
+      this._finalScore.textContent = 'Score: 0';
+
+      const animate = (now: number) => {
+        const elapsed = now - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+        const current = Math.floor(eased * target);
+        if (this._finalScore) {
+          this._finalScore.textContent = `Score: ${current}`;
+        }
+        if (t < 1) {
+          this._countUpRaf = requestAnimationFrame(animate);
+        } else {
+          // Bounce on completion
+          if (this._finalScore) {
+            this._finalScore.classList.add('score-counted');
+          }
+        }
+      };
+      this._countUpRaf = requestAnimationFrame(animate);
 
       // Show encouraging message
       const messageEl = this._gameOverScreen.querySelector('.game-over-message');
@@ -326,9 +358,8 @@ export class UIManager {
     if (skinScreen && this._overlay) {
       this._overlay.classList.remove('hidden');
       skinScreen.classList.remove('hidden');
-      skinScreen.style.display = 'block';
-      skinScreen.classList.add('visible');
       this._overlay.classList.add('visible');
+      requestAnimationFrame(() => { skinScreen.classList.add('visible'); });
     }
   }
 
@@ -338,9 +369,8 @@ export class UIManager {
     if (challengesScreen && this._overlay) {
       this._overlay.classList.remove('hidden');
       challengesScreen.classList.remove('hidden');
-      challengesScreen.style.display = 'block';
-      challengesScreen.classList.add('visible');
       this._overlay.classList.add('visible');
+      requestAnimationFrame(() => { challengesScreen.classList.add('visible'); });
     }
   }
 
@@ -350,9 +380,8 @@ export class UIManager {
     if (statsScreen && this._overlay) {
       this._overlay.classList.remove('hidden');
       statsScreen.classList.remove('hidden');
-      statsScreen.style.display = 'block';
-      statsScreen.classList.add('visible');
       this._overlay.classList.add('visible');
+      requestAnimationFrame(() => { statsScreen.classList.add('visible'); });
     }
   }
 
@@ -397,21 +426,18 @@ export class UIManager {
     if (skinScreen) {
       skinScreen.classList.add('hidden');
       skinScreen.classList.remove('visible');
-      skinScreen.style.display = 'none';
     }
 
     const challengesScreen = document.getElementById('challenges-screen');
     if (challengesScreen) {
       challengesScreen.classList.add('hidden');
       challengesScreen.classList.remove('visible');
-      challengesScreen.style.display = 'none';
     }
 
     const statsScreen = document.getElementById('stats-screen');
     if (statsScreen) {
       statsScreen.classList.add('hidden');
       statsScreen.classList.remove('visible');
-      statsScreen.style.display = 'none';
     }
 
     // Hide pause button on all non-gameplay screens
@@ -862,6 +888,14 @@ export class UIManager {
   }
 
   private _lastNearMissTime = 0;
+
+  public showScorePopup(text: string, isNearMiss: boolean): void {
+    const popup = document.createElement('div');
+    popup.className = `score-popup${isNearMiss ? ' near-miss' : ''}`;
+    popup.textContent = text;
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 900);
+  }
 
   public showNearMissToast(): void {
     const now = Date.now();
