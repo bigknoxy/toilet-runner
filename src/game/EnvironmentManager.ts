@@ -34,11 +34,25 @@ export class EnvironmentManager {
     canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    ctx.fillStyle = '#F5F5F5';
+    // Warm cream base
+    ctx.fillStyle = '#FFFAF0';
     ctx.fillRect(0, 0, 512, 512);
 
     const tileSize = 64;
-    ctx.strokeStyle = '#CCCCCC';
+    const pastelColors = ['#B5D8F7', '#F7C5D0', '#C5E8C5', '#FFF3B5'];
+
+    // Scatter ~15% pastel accent tiles
+    for (let x = 0; x < 512; x += tileSize) {
+      for (let y = 0; y < 512; y += tileSize) {
+        if (Math.random() < 0.15) {
+          ctx.fillStyle = pastelColors[Math.floor(Math.random() * pastelColors.length)];
+          ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+        }
+      }
+    }
+
+    // Warm beige grout lines
+    ctx.strokeStyle = '#E8DDD0';
     ctx.lineWidth = 3;
 
     for (let x = 0; x <= 512; x += tileSize) {
@@ -53,15 +67,6 @@ export class EnvironmentManager {
       ctx.moveTo(0, y);
       ctx.lineTo(512, y);
       ctx.stroke();
-    }
-
-    ctx.fillStyle = 'rgba(200, 200, 200, 0.1)';
-    for (let x = 0; x < 512; x += tileSize) {
-      for (let y = 0; y < 512; y += tileSize) {
-        if ((x + y) % (tileSize * 2) === 0) {
-          ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
-        }
-      }
     }
 
     const texture = new THREE.CanvasTexture(canvas);
