@@ -63,18 +63,34 @@ A humorous 3D endless runner where a toilet paper roll runs forward, avoiding pi
 - **Draw calls:** <10 total
 - **Triangles:** <10,000
 
-## Deployment
+## CI / CD
 
-### GitHub Pages
+| Workflow | Trigger | What it does |
+|---|---|---|
+| **CI** | PRs to `main` | Typecheck (`tsc --noEmit`) + build |
+| **Deploy** | Push to `main` | Build and publish to GitHub Pages |
+| **Release** | Push `v*` tag | Create GitHub Release with auto-generated notes |
+
+## Releasing
+
 ```bash
-# Build
-bun run build
-
-# Deploy
-bun run deploy
+# 1. Bump version in package.json
+# 2. Commit the change
+# 3. Tag and push
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
-Or push to main branch for automatic GitHub Actions deployment.
+The release workflow verifies the tag matches `package.json` version. GitHub Releases serves as the changelog.
+
+## Deployment
+
+```bash
+bun run build    # Build
+bun run deploy   # Deploy to GitHub Pages
+```
+
+Or push to `main` for automatic deployment.
 
 ## License
 
