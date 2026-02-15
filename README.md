@@ -1,5 +1,9 @@
 # Toilet Runner - Project Documentation
 
+[![CI](https://github.com/bigknoxy/toilet-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/bigknoxy/toilet-runner/actions/workflows/ci.yml)
+[![Deploy](https://github.com/bigknoxy/toilet-runner/actions/workflows/deploy.yml/badge.svg)](https://github.com/bigknoxy/toilet-runner/actions/workflows/deploy.yml)
+[![GitHub release](https://img.shields.io/github/v/release/bigknoxy/toilet-runner)](https://github.com/bigknoxy/toilet-runner/releases)
+
 3D endless runner game built with Three.js, TypeScript, Bun, and Vite.
 
 ## Quick Start
