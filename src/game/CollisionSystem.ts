@@ -12,7 +12,7 @@ export class CollisionSystem {
     this._obstacleBox = new THREE.Box3();
   }
 
-  checkPlayerVsObstacles(playerMesh: THREE.Mesh, obstacleManager: ObstacleManager): boolean {
+  checkPlayerVsObstacles(playerMesh: THREE.Mesh, obstacleManager: ObstacleManager): { x: number; y: number; z: number; lane: number } | null {
     // Set player bounding box from mesh
     this._playerBox.setFromObject(playerMesh);
 
@@ -39,11 +39,11 @@ export class CollisionSystem {
 
       // Check intersection
       if (this._playerBox.intersectsBox(this._obstacleBox)) {
-        return true; // Collision detected
+        return obstacle;
       }
     }
 
-    return false; // No collision
+    return null;
   }
 
   checkPlayerVsTrack(playerMesh: THREE.Mesh): boolean {

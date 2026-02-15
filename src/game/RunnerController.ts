@@ -34,6 +34,7 @@ export class RunnerController {
   private _scaleX: number = 1;
   private _tiltAngle: number = 0;
   private _isDead: boolean = false;
+  private _deathBounceVelocity: number = 0;
   private _characterCustomization: CharacterCustomization;
   private _tpMaterial: THREE.MeshLambertMaterial;
   private _textureCache: Map<string, THREE.CanvasTexture> = new Map();
@@ -49,19 +50,42 @@ export class RunnerController {
 
     this._tpMaterial = new THREE.MeshLambertMaterial({
       color: this._getMaterialColor(skin),
-      map: this.createTPTexture(skin)
+      map: this.createTPTexture(skin),
+      side: THREE.DoubleSide,
     });
 
-    const geometry = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1, 16);
+    const tpInnerR = PLAYER_RADIUS * 0.36;
+    const tpOuterR = PLAYER_RADIUS;
+    const tpHalfH = 0.5;
+    const tpProfile = [
+      new THREE.Vector2(tpOuterR, -tpHalfH),
+      new THREE.Vector2(tpOuterR,  tpHalfH),
+      new THREE.Vector2(tpInnerR,  tpHalfH),
+      new THREE.Vector2(tpInnerR, -tpHalfH),
+    ];
+    const geometry = new THREE.LatheGeometry(tpProfile, 32);
     this._tpMesh = new THREE.Mesh(geometry, this._tpMaterial);
     this._tpMesh.position.set(0, 0, 0);
     this._mesh.add(this._tpMesh);
 
-    const tubeGeometry = new THREE.CylinderGeometry(PLAYER_RADIUS * 0.35, PLAYER_RADIUS * 0.35, 1.05, 12);
-    const tubeMaterial = new THREE.MeshLambertMaterial({ color: 0x8B7355 });
+    const innerR = PLAYER_RADIUS * 0.28;
+    const outerR = PLAYER_RADIUS * 0.35;
+    const halfH = 1.05 / 2;
+    const tubeProfile = [
+      new THREE.Vector2(outerR, -halfH),
+      new THREE.Vector2(outerR,  halfH),
+      new THREE.Vector2(innerR,  halfH),
+      new THREE.Vector2(innerR, -halfH),
+    ];
+    const tubeGeometry = new THREE.LatheGeometry(tubeProfile, 32);
+    const tubeMaterial = new THREE.MeshLambertMaterial({
+      color: 0x8B7355,
+      map: this.createCardboardTexture(),
+      side: THREE.DoubleSide,
+    });
     const tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
     tubeMesh.position.set(0, 0, 0);
-    this._mesh.add(tubeMesh);
+    this._tpMesh.add(tubeMesh);
 
     this._mesh.position.set(0, 0.5, PLAYER_Z);
 
@@ -170,6 +194,16 @@ export class RunnerController {
       ctx.fill();
     }
 
+    // Paper layer lines on rim (visible at top/bottom of roll)
+    ctx.strokeStyle = 'rgba(200, 195, 185, 0.4)';
+    ctx.lineWidth = 1;
+    for (let y = 240; y < 256; y += 3) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(512, y);
+      ctx.stroke();
+    }
+
     // Create Three.js texture with proper settings
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
@@ -183,6 +217,49 @@ export class RunnerController {
     // Cache the texture
     this._textureCache.set(cacheKey, texture);
 
+    return texture;
+  }
+
+  private createCardboardTexture(): THREE.CanvasTexture {
+    if (this._textureCache.has('cardboard')) {
+      const cached = this._textureCache.get('cardboard')!;
+      cached.needsUpdate = true;
+      return cached;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d')!;
+
+    // Base brown fill
+    ctx.fillStyle = '#8B7355';
+    ctx.fillRect(0, 0, 256, 128);
+
+    // Corrugated ridges — alternating dark/light horizontal lines
+    for (let y = 0; y < 128; y += 4) {
+      ctx.fillStyle = y % 8 === 0 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.08)';
+      ctx.fillRect(0, y, 256, 2);
+    }
+
+    // Paper fiber grain dots
+    ctx.fillStyle = 'rgba(60,40,20,0.15)';
+    for (let i = 0; i < 80; i++) {
+      const x = Math.random() * 256;
+      const y = Math.random() * 128;
+      ctx.fillRect(x, y, 1, 1);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(3, 1);
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
+    texture.needsUpdate = true;
+
+    this._textureCache.set('cardboard', texture);
     return texture;
   }
 
@@ -226,7 +303,9 @@ export class RunnerController {
     // Death tumble animation
     if (this._isDead) {
       this._tpMesh.rotation.x += delta * 8;
-      this._mesh.position.y = Math.max(this._mesh.position.y - delta * 2, -0.5);
+      this._deathBounceVelocity -= delta * 12;
+      this._mesh.position.y += this._deathBounceVelocity * delta;
+      if (this._mesh.position.y < -0.5) this._mesh.position.y = -0.5;
       return;
     }
 
@@ -323,6 +402,7 @@ export class RunnerController {
 
   startDeathTumble(): void {
     this._isDead = true;
+    this._deathBounceVelocity = 5;
   }
 
   reset(): void {
@@ -339,6 +419,7 @@ export class RunnerController {
     this._scaleX = 1;
     this._tiltAngle = 0;
     this._isDead = false;
+    this._deathBounceVelocity = 0;
     this._mesh.position.set(0, 0.5, PLAYER_Z);
     this._tpMesh.rotation.set(0, 0, 0);
     this._mesh.scale.set(1, 1, 1);
