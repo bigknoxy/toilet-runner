@@ -433,8 +433,9 @@ class ToiletRunner {
       // Update speed lines
       this.speedLines.update(delta, gameSpeed);
 
-      if (!this._isDying && this.collision.checkPlayerVsObstacles(this.runner.getMesh(), this.obstacles)) {
-        this.handleCollision();
+      const hitObstacle = this.collision.checkPlayerVsObstacles(this.runner.getMesh(), this.obstacles);
+      if (!this._isDying && hitObstacle) {
+        this.handleCollision(hitObstacle);
         this.runner.startDeathTumble();
         this._isDying = true;
         this._deathTimer = 0;
@@ -482,13 +483,16 @@ class ToiletRunner {
     this.sceneManager.render();
   }
 
-  private handleCollision(): void {
+  private handleCollision(hitPos: { x: number; y: number; z: number; lane: number }): void {
     this.audioManager.playCollision();
     this.cameraShake.shake(0.3, 0.4);
 
-    const playerPos = this.runner.getPosition();
-    this.impactParticles.emitImpact(playerPos);
-    this.impactParticles.emitImpact(playerPos); // Double impact
+    const obstaclePos = new THREE.Vector3(hitPos.x, hitPos.y, hitPos.z);
+    for (let i = 0; i < 8; i++) {
+      this.impactParticles.emitImpact(obstaclePos);
+    }
+
+    this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
   }
 
   private showDeathFlash(): void {

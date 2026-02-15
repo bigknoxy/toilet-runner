@@ -329,6 +329,25 @@ export class ObstacleManager {
     return activeObstacles;
   }
 
+  hideObstacle(lane: number, z: number): void {
+    let closest: ObstacleInstance | null = null;
+    let closestDist = Infinity;
+    for (const obs of this._obstacles) {
+      if (!obs.active || obs.lane !== lane) continue;
+      const dist = Math.abs(obs.z - z);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = obs;
+      }
+    }
+    if (closest) {
+      closest.active = false;
+      this._activeCount--;
+      closest.mesh.visible = false;
+      closest.mesh.position.set(0, -100, 0);
+    }
+  }
+
   getDodgedCount(): number {
     return this._dodgedCount;
   }

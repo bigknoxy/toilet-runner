@@ -230,7 +230,7 @@ export class ParticleSystem {
   }
 
   emitImpact(position: THREE.Vector3): void {
-    this.emit(position, 15);
+    this.emit(position, 25);
   }
 
   emitCoin(position: THREE.Vector3): void {
@@ -256,12 +256,12 @@ export const ParticlePresets: Record<ParticleType, ParticleConfig> = {
     gravity: 0.5
   },
   [ParticleType.IMPACT]: {
-    maxParticles: 200,
+    maxParticles: 300,
     colors: [0xFFFFFF, 0xF5F5DC, 0x8B7355, 0x6B4423, 0xFF6B6B],
-    size: { min: 0.08, max: 0.25 },
-    speed: { min: 2, max: 8 },
-    lifetime: 0.8,
-    gravity: 12
+    size: { min: 0.15, max: 0.5 },
+    speed: { min: 5, max: 15 },
+    lifetime: 1.4,
+    gravity: 6
   },
   [ParticleType.COIN]: {
     maxParticles: 200,
