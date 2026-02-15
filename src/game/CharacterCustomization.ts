@@ -2,7 +2,7 @@ export interface CharacterSkin {
   id: string;
   name: string;
   color: number | string;
-  gradient?: [number, number, number];
+  gradient?: number[];
   unlockScore: number;
   icon: string;
   description: string;

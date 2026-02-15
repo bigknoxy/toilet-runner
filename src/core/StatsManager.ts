@@ -151,7 +151,7 @@ export class StatsManager {
       this._stats.selectedSkin = oldGameData.selectedSkin || 'classic';
 
       if (oldGameData.unlockedSkins && Array.isArray(oldGameData.unlockedSkins)) {
-        this._stats.unlockedSkins = [...new Set(oldGameData.unlockedSkins)];
+        this._stats.unlockedSkins = [...new Set<string>(oldGameData.unlockedSkins)];
       } else if (oldStats.skinsUnlocked && typeof oldStats.skinsUnlocked === 'number') {
         this._stats.unlockedSkins = this._convertSkinsNumberToArray(oldStats.skinsUnlocked);
       }
