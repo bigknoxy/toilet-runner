@@ -398,6 +398,14 @@
   margin-bottom: 2rem;
 }
 
+.app-version {
+  margin-top: 1.5rem;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'Poppins', sans-serif;
+  letter-spacing: 0.5px;
+}
+
 .start-prompt {
   display: none;
 }
