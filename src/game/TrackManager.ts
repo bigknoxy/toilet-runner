@@ -35,7 +35,7 @@ export class TrackManager {
     this.tempVector = new THREE.Vector3();
 
     // Create ground geometry spanning all 3 lanes with margins
-    const geometry = new THREE.BoxGeometry(LANE_WIDTH * 3 + 6, 0.5, SEGMENT_LENGTH);
+    const geometry = new THREE.BoxGeometry(LANE_WIDTH * 3 + 8, 0.5, SEGMENT_LENGTH);
     const material = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
 
     // Create InstancedMesh for performance (1 draw call)
@@ -255,7 +255,7 @@ export class TrackManager {
   applyTileTexture(texture: THREE.CanvasTexture): void {
     // Create a static floor plane with a scrolling texture
     const FLOOR_LENGTH = 120;
-    const floorWidth = LANE_WIDTH * 3 + 6;
+    const floorWidth = LANE_WIDTH * 3 + 8;
 
     const clonedTexture = texture.clone();
     clonedTexture.needsUpdate = true;

@@ -4,7 +4,7 @@ const DECORATION_INTERVAL = 40;
 const MAX_DECORATIONS = 20;
 const SPAWN_DISTANCE = 80;
 
-const GRAFFITI_COLORS = ['#8B5E3C', '#4A90D9', '#D94A4A', '#FF69B4', '#9B59B6'];
+const GRAFFITI_COLORS = ['#2E86AB', '#4A90D9', '#D94A4A', '#FF69B4', '#9B59B6'];
 const GRAFFITI_PHRASES = [
   'FLUSH THE COMPETITION', 'TP WAS HERE', 'WIPE OUT!', 'NO.1 RUNNER',
   'PAPER BEATS ROCK', 'THIS GAME STINKS ;)', 'SIT DOWN. BE HUMBLE.', 'PLUNGER WAS HERE'
@@ -144,7 +144,7 @@ export class EnvironmentManager {
   }
 
   private drawGraffiti(ctx: CanvasRenderingContext2D, size: number): void {
-    const count = 10 + Math.floor(Math.random() * 5); // 10-14 elements
+    const count = 6 + Math.floor(Math.random() * 4); // 6-9 elements
 
     for (let i = 0; i < count; i++) {
       const x = 100 + Math.random() * (size - 200);
@@ -162,8 +162,8 @@ export class EnvironmentManager {
         const fontSize = 60 + Math.floor(Math.random() * 60);
         ctx.font = `bold ${fontSize}px "Comic Sans MS", cursive`;
         ctx.globalAlpha = 0.7 + Math.random() * 0.3;
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.lineWidth = 6;
         ctx.strokeText(phrase, 0, 0);
         ctx.fillStyle = color;
         ctx.fillText(phrase, 0, 0);
@@ -181,7 +181,7 @@ export class EnvironmentManager {
     const type = Math.floor(Math.random() * 4);
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 8;
 
     switch (type) {
       case 0: // Heart
@@ -233,7 +233,7 @@ export class EnvironmentManager {
 
     // Left wall
     const leftTexture = this.createWallTexture();
-    leftTexture.repeat.set(12, 1.2);
+    leftTexture.repeat.set(4, 1.2);
     const leftMaterial = new THREE.MeshLambertMaterial({ map: leftTexture });
     this._leftWall = new THREE.Mesh(geometry, leftMaterial);
     this._leftWall.position.set(-8.5, 3, -30);
@@ -242,7 +242,7 @@ export class EnvironmentManager {
 
     // Right wall (separate texture for different graffiti)
     const rightTexture = this.createWallTexture();
-    rightTexture.repeat.set(12, 1.2);
+    rightTexture.repeat.set(4, 1.2);
     const rightMaterial = new THREE.MeshLambertMaterial({ map: rightTexture });
     this._rightWall = new THREE.Mesh(geometry, rightMaterial);
     this._rightWall.position.set(8.5, 3, -30);
