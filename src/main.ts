@@ -636,7 +636,7 @@ class ToiletRunner {
   }
 
   private handleLaneChange(direction: -1 | 1): void {
-    if (this.currentGameState === GameState.PLAYING) {
+    if (this.currentGameState === GameState.PLAYING && !this._isDying) {
       if (direction === -1) {
         this.runner.moveLeft();
       } else {
