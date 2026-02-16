@@ -12,7 +12,6 @@ export interface DifficultyTier {
   minScore: number;
   maxScore: number;
   patternDistribution: PatternDistribution;
-  spawnRate: number;
   baseObstacleSpeed: number;
   gapBetweenWaves: number;
 }
@@ -22,38 +21,58 @@ export class DifficultyManager {
     {
       name: 'BEGINNER',
       minScore: 0,
-      maxScore: 100,
-      patternDistribution: { easy: 0.8, medium: 0.2, hard: 0.0, extreme: 0.0 },
-      spawnRate: 25,
+      maxScore: 50,
+      patternDistribution: { easy: 0.9, medium: 0.1, hard: 0.0, extreme: 0.0 },
       baseObstacleSpeed: 1.0,
+      gapBetweenWaves: 28
+    },
+    {
+      name: 'EASY',
+      minScore: 50,
+      maxScore: 120,
+      patternDistribution: { easy: 0.65, medium: 0.3, hard: 0.05, extreme: 0.0 },
+      baseObstacleSpeed: 1.05,
       gapBetweenWaves: 25
     },
     {
       name: 'INTERMEDIATE',
-      minScore: 100,
-      maxScore: 250,
-      patternDistribution: { easy: 0.4, medium: 0.4, hard: 0.2, extreme: 0.0 },
-      spawnRate: 22,
+      minScore: 120,
+      maxScore: 200,
+      patternDistribution: { easy: 0.35, medium: 0.45, hard: 0.2, extreme: 0.0 },
       baseObstacleSpeed: 1.1,
       gapBetweenWaves: 22
     },
     {
       name: 'ADVANCED',
-      minScore: 250,
-      maxScore: 500,
-      patternDistribution: { easy: 0.2, medium: 0.4, hard: 0.3, extreme: 0.1 },
-      spawnRate: 18,
+      minScore: 200,
+      maxScore: 320,
+      patternDistribution: { easy: 0.15, medium: 0.4, hard: 0.35, extreme: 0.1 },
+      baseObstacleSpeed: 1.15,
+      gapBetweenWaves: 19
+    },
+    {
+      name: 'HARD',
+      minScore: 320,
+      maxScore: 450,
+      patternDistribution: { easy: 0.05, medium: 0.25, hard: 0.45, extreme: 0.25 },
       baseObstacleSpeed: 1.2,
-      gapBetweenWaves: 18
+      gapBetweenWaves: 16
+    },
+    {
+      name: 'EXPERT',
+      minScore: 450,
+      maxScore: 600,
+      patternDistribution: { easy: 0.0, medium: 0.15, hard: 0.45, extreme: 0.4 },
+      baseObstacleSpeed: 1.25,
+      gapBetweenWaves: 13
     },
     {
       name: 'MASTER',
-      minScore: 500,
+      minScore: 600,
       maxScore: Infinity,
-      patternDistribution: { easy: 0.1, medium: 0.3, hard: 0.4, extreme: 0.2 },
-      spawnRate: 15,
+      patternDistribution: { easy: 0.0, medium: 0.1, hard: 0.4, extreme: 0.5 },
       baseObstacleSpeed: 1.3,
-      gapBetweenWaves: 15
+      gapBetweenWaves: 10
     }
   ];
 
@@ -70,22 +89,6 @@ export class DifficultyManager {
     if (normalizedRandom < easy + medium) return 'MEDIUM';
     if (normalizedRandom < easy + medium + hard) return 'HARD';
     return 'EXTREME';
-  }
-
-  static getSpawnRate(score: number): number {
-    const tier = this.getCurrentTier(score);
-    const progress = this.getTierProgress(score, tier);
-    const nextTier = this.getNextTier(tier);
-
-    if (!nextTier) return tier.spawnRate;
-
-    const spawnRate = this.lerp(
-      tier.spawnRate,
-      nextTier.spawnRate,
-      progress
-    );
-
-    return Math.round(spawnRate);
   }
 
   static getBaseObstacleSpeed(score: number): number {
