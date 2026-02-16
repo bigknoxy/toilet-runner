@@ -10,7 +10,7 @@ export interface ObstaclePattern {
   difficulty: Difficulty;
   obstacles: ObstacleConfig[];
   gapToNext: number;
-  guaranteedClearLane?: 0 | 1 | 2;
+  guaranteedClearLane: 0 | 1 | 2;
 }
 
 export class PatternPool {
@@ -54,6 +54,20 @@ export class PatternPool {
         obstacles: [{ lane: 1, speedMultiplier: 1.1 }],
         gapToNext: 22,
         guaranteedClearLane: 2
+      },
+      {
+        id: 'E5',
+        difficulty: 'EASY',
+        obstacles: [{ lane: 0, speedMultiplier: 1.0 }],
+        gapToNext: 22,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'E6',
+        difficulty: 'EASY',
+        obstacles: [{ lane: 2, speedMultiplier: 1.0 }],
+        gapToNext: 22,
+        guaranteedClearLane: 1
       }
     ];
   }
@@ -254,9 +268,7 @@ export class PatternPool {
       const patterns = this.getPatternsByDifficulty(difficulty);
       const laneCounts: Record<number, number> = { 0: 0, 1: 0, 2: 0 };
       for (const pattern of patterns) {
-        if (pattern.guaranteedClearLane !== undefined) {
-          laneCounts[pattern.guaranteedClearLane]++;
-        }
+        laneCounts[pattern.guaranteedClearLane]++;
       }
       result[difficulty] = laneCounts;
     }

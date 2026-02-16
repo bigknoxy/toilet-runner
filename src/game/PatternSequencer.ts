@@ -38,9 +38,7 @@ export class PatternSequencer {
     this.lastSpawnedPattern = pattern;
 
     // Update current clear lane
-    if (pattern.guaranteedClearLane !== undefined) {
-      this.currentClearLane = pattern.guaranteedClearLane;
-    }
+    this.currentClearLane = pattern.guaranteedClearLane;
 
     // Track recent difficulties for anti-streak
     this.recentDifficulties.push(pattern.difficulty);
@@ -110,14 +108,12 @@ export class PatternSequencer {
         if (sameLanePatterns.length > 0) {
           selectedPattern = this.selectRandom(sameLanePatterns);
         } else {
-          // If no same lane patterns, find one with sufficient gap
-          const sufficientGapPatterns = patterns.filter(p =>
-            lastPattern.gapToNext >= 14
-          );
-
-          if (sufficientGapPatterns.length > 0) {
-            selectedPattern = this.selectRandom(sufficientGapPatterns);
+          if (lastPattern.gapToNext >= 14) {
+            // Sufficient gap for lane change — any pattern works
+            selectedPattern = this.selectRandom(patterns);
           } else {
+            // Tight gap, no same-lane option in this difficulty — pick any
+            // (ensureSolvablePattern will fix this later if needed)
             selectedPattern = this.selectRandom(patterns);
           }
         }
@@ -158,9 +154,6 @@ export class PatternSequencer {
     }
 
     const currentClearLane = this.lastSpawnedPattern.guaranteedClearLane;
-    if (currentClearLane === undefined) {
-      return originalPattern;
-    }
 
     // Check if we have enough spatial gap for lane change
     const lastGap = this.lastSpawnedPattern.gapToNext;
@@ -206,6 +199,7 @@ export class PatternSequencer {
       return anySameLanePatterns[randomIndex];
     }
 
+    console.warn(`[PatternSequencer] No pattern found with clearLane=${currentClearLane} — returning original pattern '${originalPattern.id}' (potentially unsolvable)`);
     return originalPattern;
   }
 
