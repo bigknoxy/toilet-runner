@@ -1,17 +1,14 @@
 import * as THREE from 'three';
 import { TrackManager } from './TrackManager';
 import { EmojiTextureAtlas } from './visual/EmojiTextureAtlas';
-import { PatternPool } from './ObstaclePattern.js';
+import { PatternPool, ObstaclePattern } from './ObstaclePattern.js';
 import { PatternSequencer } from './PatternSequencer.js';
 import { DifficultyManager } from './DifficultyManager.js';
-import { CONFIG } from '../core/GameConfig.js';
 
 const LANE_WIDTH = 3;
 const SEGMENT_LENGTH = 10;
 const MAX_OBSTACLES = 50;
-const SPAWN_RATE_BASE = 2.0;
 const DESPAWN_DISTANCE = 10;
-const DIFFICULTY_MULTIPLIER = 0.01;
 
 interface ObstacleInstance {
   mesh: THREE.Group;
@@ -31,8 +28,9 @@ export class ObstacleManager {
   private _trackManager: TrackManager;
   private _obstacles: ObstacleInstance[] = [];
   private _activeCount = 0;
-  private _spawnTimer = 0;
-  private _waveCounter = 0;
+  private _distanceSinceLastSpawn = 0;
+  private _nextSpawnGap = 22; // Initial EASY gap
+  private _patternsInWave = 0;
   private _dodgedCount = 0;
   private _emojiFacesEnabled: boolean = false;
   private _bodyMaterial: THREE.MeshLambertMaterial;
@@ -166,15 +164,23 @@ export class ObstacleManager {
   }
 
   update(delta: number, speed: number, score: number): void {
-    this._spawnTimer -= delta;
     PatternSequencer.setScore(score);
 
-    const spawnRate = DifficultyManager.getSpawnRate(score);
+    this._distanceSinceLastSpawn += speed * delta;
 
-    if (this._spawnTimer <= 0) {
-      this.spawnPatternObstacles();
-      this._spawnTimer = spawnRate / 60;
-      this._waveCounter++;
+    if (this._distanceSinceLastSpawn >= this._nextSpawnGap) {
+      this._distanceSinceLastSpawn = 0;
+      const pattern = this.spawnPatternObstacles();
+      this._patternsInWave++;
+
+      // Set next gap from pattern's gapToNext
+      this._nextSpawnGap = pattern.gapToNext;
+
+      // After every 3 patterns, add wave rest gap
+      if (this._patternsInWave >= 3) {
+        this._nextSpawnGap += DifficultyManager.getGapBetweenWaves(score);
+        this._patternsInWave = 0;
+      }
     }
 
     const time = Date.now() * 0.001;  // Global time for animations
@@ -208,7 +214,7 @@ export class ObstacleManager {
     }
   }
 
-  private spawnPatternObstacles(): void {
+  private spawnPatternObstacles(): ObstaclePattern {
     const pattern = PatternSequencer.getNextPattern();
 
     for (const obstacleConfig of pattern.obstacles) {
@@ -217,6 +223,8 @@ export class ObstacleManager {
         obstacleConfig.speedMultiplier
       );
     }
+
+    return pattern;
   }
 
   private getWeightedRandomLane(weights: number[]): number {
@@ -301,8 +309,9 @@ export class ObstacleManager {
     }
 
     this._activeCount = 0;
-    this._spawnTimer = 0;
-    this._waveCounter = 0;
+    this._distanceSinceLastSpawn = 0;
+    this._nextSpawnGap = 22;
+    this._patternsInWave = 0;
     this._dodgedCount = 0;
     PatternSequencer.reset();
   }

@@ -5,109 +5,127 @@ import { DifficultyManager, DifficultyTier } from './DifficultyManager.js';
 export interface PatternSequence {
   patterns: ObstaclePattern[];
   currentIndex: number;
-  id: string;
 }
 
 export class PatternSequencer {
-  private static sequences: PatternSequence[] = [];
   private static currentSequence: PatternSequence | null = null;
   private static score: number = 0;
   private static lastSpawnedPattern: ObstaclePattern | null = null;
   private static currentClearLane: 0 | 1 | 2 = 1;
+  private static recentDifficulties: Difficulty[] = [];
 
   static initialize(): void {
-    this.generateSequences();
+    // No pre-built sequences needed
   }
 
   static setScore(newScore: number): void {
     this.score = newScore;
   }
 
-  private static generateSequences(): void {
-    const easyPatterns = PatternPool.getPatternsByDifficulty('EASY');
-    const mediumPatterns = PatternPool.getPatternsByDifficulty('MEDIUM');
-    const hardPatterns = PatternPool.getPatternsByDifficulty('HARD');
-    const extremePatterns = PatternPool.getPatternsByDifficulty('EXTREME');
+  static getNextPattern(): ObstaclePattern {
+    if (!this.currentSequence || this.currentSequence.currentIndex >= this.currentSequence.patterns.length) {
+      const tier = DifficultyManager.getCurrentTier(this.score);
+      this.currentSequence = this.buildSequence(tier);
+    }
 
-    this.sequences = [
-      {
-        id: 'SEQ_EE',
-        patterns: this.generateSolvableSequence([easyPatterns, easyPatterns, easyPatterns]),
-        currentIndex: 0
-      },
-      {
-        id: 'SEQ_EEM',
-        patterns: this.generateSolvableSequence([easyPatterns, easyPatterns, mediumPatterns]),
-        currentIndex: 0
-      },
-      {
-        id: 'SEQ_EMM',
-        patterns: this.generateSolvableSequence([easyPatterns, mediumPatterns, mediumPatterns]),
-        currentIndex: 0
-      },
-      {
-        id: 'SEQ_MMH',
-        patterns: this.generateSolvableSequence([mediumPatterns, mediumPatterns, hardPatterns]),
-        currentIndex: 0
-      },
-      {
-        id: 'SEQ_MHH',
-        patterns: this.generateSolvableSequence([mediumPatterns, hardPatterns, hardPatterns]),
-        currentIndex: 0
-      },
-      {
-        id: 'SEQ_HHX',
-        patterns: this.generateSolvableSequence([hardPatterns, hardPatterns, extremePatterns]),
-        currentIndex: 0
-      },
-      {
-        id: 'SEQ_XXX',
-        patterns: this.generateSolvableSequence([extremePatterns, extremePatterns, extremePatterns]),
-        currentIndex: 0
+    let pattern = this.currentSequence.patterns[this.currentSequence.currentIndex];
+
+    // Ensure solvability by checking clear lane continuity
+    const tier = DifficultyManager.getCurrentTier(this.score);
+    pattern = this.ensureSolvablePattern(pattern, tier);
+
+    this.currentSequence.currentIndex++;
+    this.lastSpawnedPattern = pattern;
+
+    // Update current clear lane
+    if (pattern.guaranteedClearLane !== undefined) {
+      this.currentClearLane = pattern.guaranteedClearLane;
+    }
+
+    // Track recent difficulties for anti-streak
+    this.recentDifficulties.push(pattern.difficulty);
+    if (this.recentDifficulties.length > 3) {
+      this.recentDifficulties.shift();
+    }
+
+    return pattern;
+  }
+
+  private static buildSequence(tier: DifficultyTier): PatternSequence {
+    const difficulties: Difficulty[] = [];
+    for (let i = 0; i < 3; i++) {
+      difficulties.push(this.rollDifficulty(tier));
+    }
+
+    const patternGroups = difficulties.map(d => PatternPool.getPatternsByDifficulty(d));
+    const patterns = this.generateSolvableSequence(patternGroups);
+
+    return { patterns, currentIndex: 0 };
+  }
+
+  private static rollDifficulty(tier: DifficultyTier): Difficulty {
+    let { easy, medium, hard, extreme } = tier.patternDistribution;
+
+    // Anti-streak: if 2+ of the same difficulty in recent history, halve its weight
+    if (this.recentDifficulties.length >= 2) {
+      const counts: Record<string, number> = {};
+      for (const d of this.recentDifficulties) {
+        counts[d] = (counts[d] || 0) + 1;
       }
-    ];
+      if ((counts['EASY'] || 0) >= 2) easy *= 0.5;
+      if ((counts['MEDIUM'] || 0) >= 2) medium *= 0.5;
+      if ((counts['HARD'] || 0) >= 2) hard *= 0.5;
+      if ((counts['EXTREME'] || 0) >= 2) extreme *= 0.5;
+    }
+
+    // Normalize weights
+    const total = easy + medium + hard + extreme;
+    if (total === 0) return 'EASY';
+
+    const random = Math.random() * total;
+    if (random < easy) return 'EASY';
+    if (random < easy + medium) return 'MEDIUM';
+    if (random < easy + medium + hard) return 'HARD';
+    return 'EXTREME';
   }
 
   private static generateSolvableSequence(patternGroups: ObstaclePattern[][]): ObstaclePattern[] {
     const sequence: ObstaclePattern[] = [];
-    
+
     for (let i = 0; i < patternGroups.length; i++) {
       const patterns = patternGroups[i];
       let selectedPattern: ObstaclePattern;
 
       if (i === 0) {
-        // First pattern - any pattern works
         selectedPattern = this.selectRandom(patterns);
       } else {
-        // Subsequent patterns - prefer same clear lane or ensure sufficient gap
         const lastPattern = sequence[i - 1];
         const lastClearLane = lastPattern.guaranteedClearLane;
-        
+
         // Try to find pattern with same clear lane
-        const sameLanePatterns = patterns.filter(p => 
+        const sameLanePatterns = patterns.filter(p =>
           p.guaranteedClearLane === lastClearLane
         );
-        
+
         if (sameLanePatterns.length > 0) {
           selectedPattern = this.selectRandom(sameLanePatterns);
         } else {
           // If no same lane patterns, find one with sufficient gap
-          const sufficientGapPatterns = patterns.filter(p => 
-            lastPattern.gapToNext >= 20 // Minimum gap for lane change
+          const sufficientGapPatterns = patterns.filter(p =>
+            lastPattern.gapToNext >= 14
           );
-          
+
           if (sufficientGapPatterns.length > 0) {
             selectedPattern = this.selectRandom(sufficientGapPatterns);
           } else {
-            // Fallback to any pattern (should be rare)
             selectedPattern = this.selectRandom(patterns);
           }
         }
       }
-      
+
       sequence.push(selectedPattern);
     }
-    
+
     return sequence;
   }
 
@@ -116,59 +134,15 @@ export class PatternSequencer {
     return patterns[index];
   }
 
-  static getNextPattern(): ObstaclePattern {
-    const tier = DifficultyManager.getCurrentTier(this.score);
-    const { patternDistribution } = tier;
-
-    if (!this.currentSequence || this.currentSequence.currentIndex >= this.currentSequence.patterns.length) {
-      this.currentSequence = this.selectSequence(tier);
-    }
-
-    let pattern = this.currentSequence.patterns[this.currentSequence.currentIndex];
-    
-    // Ensure solvability by checking clear lane continuity
-    pattern = this.ensureSolvablePattern(pattern, tier);
-    
-    this.currentSequence.currentIndex++;
-    this.lastSpawnedPattern = pattern;
-    
-    // Update current clear lane
-    if (pattern.guaranteedClearLane !== undefined) {
-      this.currentClearLane = pattern.guaranteedClearLane;
-    }
-
-    return pattern;
-  }
-
-  private static selectSequence(tier: DifficultyTier): PatternSequence {
-    const { easy, medium, hard, extreme } = tier.patternDistribution;
-    const random = Math.random();
-
-    let selectedSequence: PatternSequence;
-
-    if (random < easy) {
-      selectedSequence = this.sequences.find(s => s.id === 'SEQ_EE') || this.sequences[0];
-    } else if (random < easy + medium) {
-      const seqIndex = Math.floor(Math.random() * 3);
-      selectedSequence = this.sequences[seqIndex];
-    } else if (random < easy + medium + hard) {
-      const seqIndex = 3 + Math.floor(Math.random() * 2);
-      selectedSequence = this.sequences[seqIndex];
-    } else {
-      selectedSequence = this.sequences.find(s => s.id === 'SEQ_XXX') || this.sequences[this.sequences.length - 1];
-    }
-
-    selectedSequence.currentIndex = 0;
-    return selectedSequence;
-  }
-
-  static getCurrentSequenceId(): string | null {
-    return this.currentSequence?.id || null;
+  /** Returns true when the current sequence just finished (caller should add wave rest). */
+  static isSequenceComplete(): boolean {
+    return this.currentSequence !== null &&
+      this.currentSequence.currentIndex >= this.currentSequence.patterns.length;
   }
 
   static getCurrentProgress(): { current: number; total: number } {
     if (!this.currentSequence) {
-      return { current: 0, total: 1 };
+      return { current: 0, total: 3 };
     }
 
     return {
@@ -178,31 +152,29 @@ export class PatternSequencer {
   }
 
   private static ensureSolvablePattern(originalPattern: ObstaclePattern, tier: DifficultyTier): ObstaclePattern {
-    // First pattern or pattern with same clear lane is always solvable
-    if (!this.lastSpawnedPattern || 
+    if (!this.lastSpawnedPattern ||
         this.lastSpawnedPattern.guaranteedClearLane === originalPattern.guaranteedClearLane) {
       return originalPattern;
     }
 
     const currentClearLane = this.lastSpawnedPattern.guaranteedClearLane;
     if (currentClearLane === undefined) {
-      return originalPattern; // Fallback
+      return originalPattern;
     }
 
     // Check if we have enough spatial gap for lane change
     const lastGap = this.lastSpawnedPattern.gapToNext;
-    const minGapForLaneChange = 20; // Minimum spatial units needed for safe lane change
-    
-    // If last pattern has sufficient gap, lane change is possible
+    const minGapForLaneChange = 14;
+
     if (lastGap >= minGapForLaneChange) {
       return originalPattern;
     }
 
     // Not enough gap - MUST maintain same clear lane for solvability
-    
+
     // First try: same difficulty with same clear lane
     const sameDifficultyPatterns = PatternPool.getPatternsByDifficulty(originalPattern.difficulty);
-    const compatiblePatterns = sameDifficultyPatterns.filter(p => 
+    const compatiblePatterns = sameDifficultyPatterns.filter(p =>
       p.guaranteedClearLane === currentClearLane
     );
 
@@ -213,20 +185,19 @@ export class PatternSequencer {
 
     // Second try: ANY allowed difficulty with same clear lane
     const allPatterns = PatternPool.getAllPatterns();
-    const allowedPatterns = allPatterns.filter(p => 
+    const allowedPatterns = allPatterns.filter(p =>
       p.guaranteedClearLane === currentClearLane &&
       this.isDifficultyAllowed(p.difficulty, tier)
     );
 
     if (allowedPatterns.length > 0) {
-      // Prioritize patterns with larger gaps to give more flexibility for next pattern
       allowedPatterns.sort((a, b) => b.gapToNext - a.gapToNext);
       const randomIndex = Math.floor(Math.random() * Math.min(3, allowedPatterns.length));
       return allowedPatterns[randomIndex];
     }
 
-    // Ultimate fallback: ANY pattern with same clear lane (ignore difficulty restrictions)
-    const anySameLanePatterns = allPatterns.filter(p => 
+    // Ultimate fallback: ANY pattern with same clear lane
+    const anySameLanePatterns = allPatterns.filter(p =>
       p.guaranteedClearLane === currentClearLane
     );
 
@@ -235,13 +206,12 @@ export class PatternSequencer {
       return anySameLanePatterns[randomIndex];
     }
 
-    // This should never happen with our pattern pool, but just in case:
     return originalPattern;
   }
 
   private static isDifficultyAllowed(difficulty: Difficulty, tier: DifficultyTier): boolean {
     const { easy, medium, hard, extreme } = tier.patternDistribution;
-    
+
     switch (difficulty) {
       case 'EASY': return easy > 0;
       case 'MEDIUM': return medium > 0;
@@ -260,5 +230,6 @@ export class PatternSequencer {
     this.score = 0;
     this.lastSpawnedPattern = null;
     this.currentClearLane = 1;
+    this.recentDifficulties = [];
   }
 }

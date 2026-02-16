@@ -21,8 +21,8 @@ export interface GameConfig {
 
 export const CONFIG: GameConfig = {
   patterns: {
-    minGapBetweenWaves: 14,
-    maxGapBetweenWaves: 25,
+    minGapBetweenWaves: 10,
+    maxGapBetweenWaves: 28,
     minSpeedMultiplier: 1.0,
     maxSpeedMultiplier: 1.7,
     maxObstaclesPerPattern: 2
