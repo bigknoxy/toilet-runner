@@ -64,16 +64,16 @@ export class PatternSequencer {
   private static rollDifficulty(tier: DifficultyTier): Difficulty {
     let { easy, medium, hard, extreme } = tier.patternDistribution;
 
-    // Anti-streak: if 2+ of the same difficulty in recent history, halve its weight
+    // Anti-streak: if 2+ of the same difficulty in recent history, suppress its weight
     if (this.recentDifficulties.length >= 2) {
       const counts: Record<string, number> = {};
       for (const d of this.recentDifficulties) {
         counts[d] = (counts[d] || 0) + 1;
       }
-      if ((counts['EASY'] || 0) >= 2) easy *= 0.5;
-      if ((counts['MEDIUM'] || 0) >= 2) medium *= 0.5;
-      if ((counts['HARD'] || 0) >= 2) hard *= 0.5;
-      if ((counts['EXTREME'] || 0) >= 2) extreme *= 0.5;
+      if ((counts['EASY'] || 0) >= 2) easy *= 0.1;
+      if ((counts['MEDIUM'] || 0) >= 2) medium *= 0.1;
+      if ((counts['HARD'] || 0) >= 2) hard *= 0.1;
+      if ((counts['EXTREME'] || 0) >= 2) extreme *= 0.1;
     }
 
     // Normalize weights
@@ -155,9 +155,10 @@ export class PatternSequencer {
 
     const currentClearLane = this.lastSpawnedPattern.guaranteedClearLane;
 
-    // Check if we have enough spatial gap for lane change
+    // Check if we have enough spatial gap for lane change (scales with lane distance)
     const lastGap = this.lastSpawnedPattern.gapToNext;
-    const minGapForLaneChange = 14;
+    const laneDistance = Math.abs(currentClearLane - originalPattern.guaranteedClearLane);
+    const minGapForLaneChange = laneDistance <= 1 ? 14 : 22;
 
     if (lastGap >= minGapForLaneChange) {
       return originalPattern;

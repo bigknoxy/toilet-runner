@@ -1,5 +1,5 @@
 const SWIPE_THRESHOLD = 80;
-const SWIPE_DEBOUNCE_MS = 150;
+const SWIPE_DEBOUNCE_MS = 100;
 const TAP_ZONE_RATIO = 0.3; // Tap within 30% of screen edge triggers lane change
 
 export class InputManager {

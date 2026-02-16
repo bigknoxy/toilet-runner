@@ -77,6 +77,10 @@ All data in `localStorage` under `toiletRunner_unifiedData` (version 2). Stores 
 - Reuse `THREE.Vector3`/`THREE.Box3` in update loops — never allocate in hot paths
 - Explicit TypeScript types, no `any`
 
+## Workflow
+
+After completing any fix or feature change, always start the dev server (`bun run dev`) so the user can playtest immediately.
+
 ## Common Pitfalls
 
 - Vite `base: './'` is required for GitHub Pages asset paths — do not change it
