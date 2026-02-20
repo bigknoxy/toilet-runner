@@ -519,22 +519,22 @@
 
 @keyframes scoreFlash {
   0% {
-    transform: scale(1);
+    transform: translateX(-50%) scale(1);
     color: white;
   }
 
   25% {
-    transform: scale(1.4);
+    transform: translateX(-50%) scale(1.4);
     color: #FFD700;
   }
 
   50% {
-    transform: scale(1.2);
+    transform: translateX(-50%) scale(1.2);
     color: #FFEB3B;
   }
 
   100% {
-    transform: scale(1);
+    transform: translateX(-50%) scale(1);
     color: white;
   }
 }
@@ -547,18 +547,18 @@
 
 @keyframes scorePulse {
   0% {
-    transform: scale(1);
+    transform: translateX(-50%) scale(1);
     color: white;
   }
 
   50% {
-    transform: scale(1.1);
+    transform: translateX(-50%) scale(1.1);
     color: #4ECDC4;
     filter: brightness(1.2);
   }
 
   100% {
-    transform: scale(1);
+    transform: translateX(-50%) scale(1);
     color: white;
   }
 }

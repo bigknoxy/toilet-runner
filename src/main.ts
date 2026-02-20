@@ -47,6 +47,12 @@ const MILESTONE_MESSAGES: Record<number, string> = {
   5000: '🌟 LEGENDARY FLUSH!'
 };
 
+// Near-miss detection constants
+const NEAR_MISS_MAX_DIST = 2.5;
+const SAME_LANE_THRESHOLD = 0.5;
+const NEAR_MISS_BONUS = 10;
+const CLOSE_PASS_BONUS = 5;
+
 class ToiletRunner {
   private sceneManager!: SceneManager;
   private gameLoop!: GameLoop;
@@ -352,7 +358,7 @@ class ToiletRunner {
         return;
       }
 
-      const speedIncrease = Math.floor(this.score / 10) * SPEED_INCREASE;
+      const speedIncrease = Math.floor(this.survivalTime) * SPEED_INCREASE;
       const gameSpeed = BASE_SPEED + speedIncrease;
 
       // Update survival time and challenge progress
@@ -386,17 +392,21 @@ class ToiletRunner {
 
           // Check for near miss (obstacle in adjacent lane, close to player)
           const lateralDist = Math.abs(obstacle.x - playerPos.x);
-          const isNearMiss = lateralDist < 2.5 && lateralDist > 0.5;
+          const isNearMiss = lateralDist < NEAR_MISS_MAX_DIST && lateralDist > SAME_LANE_THRESHOLD;
 
           if (isNearMiss) {
-            this.ui.showScorePopup('CLOSE!', true);
+            // Near miss - adjacent lane dodge
+            this.score += NEAR_MISS_BONUS;
+            this.ui.showScorePopup('+10', true);
             this.runner.triggerSuccessBounce();
-          } else if (lateralDist <= 0.5) {
-            this.ui.showScorePopup('+10', false);
+          } else if (lateralDist <= SAME_LANE_THRESHOLD) {
+            // Close pass - same lane, jumped over
+            this.score += CLOSE_PASS_BONUS;
+            this.ui.showScorePopup('+5', false);
           }
 
-          // Trigger celebration effects only for same-lane or near-miss dodges
-          if (lateralDist <= 2.5) {
+          // Trigger celebration effects for both near-miss and close-pass
+          if (lateralDist <= NEAR_MISS_MAX_DIST) {
             const dodgePos = new THREE.Vector3(obstacle.x, playerPos.y, playerPos.z + 1);
             this.sparkleParticles.emitSparkle(dodgePos);
             this.cameraShake.shake(0.03, 0.1);
