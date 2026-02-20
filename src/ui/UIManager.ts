@@ -887,7 +887,6 @@ export class UIManager {
     }
   }
 
-  private _lastNearMissTime = 0;
   private _reachedMilestones: Set<number> = new Set();
 
   public showScorePopup(text: string, isNearMiss: boolean): void {
@@ -896,24 +895,6 @@ export class UIManager {
     popup.textContent = text;
     document.body.appendChild(popup);
     setTimeout(() => popup.remove(), 900);
-  }
-
-  public showNearMissToast(): void {
-    const now = Date.now();
-    // Throttle near-miss toasts to once per second
-    if (now - this._lastNearMissTime < 1000) return;
-    this._lastNearMissTime = now;
-
-    const toast = document.createElement('div');
-    toast.className = 'near-miss-toast';
-    toast.textContent = 'Close call!';
-    document.body.appendChild(toast);
-
-    setTimeout(() => toast.classList.add('visible'), 10);
-    setTimeout(() => {
-      toast.classList.remove('visible');
-      setTimeout(() => toast.remove(), 200);
-    }, 800);
   }
 
   public showStreakNotification(streak: number): void {
