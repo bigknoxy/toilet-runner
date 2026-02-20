@@ -1,8 +1,12 @@
+export type SkinPattern = 'solid' | 'gradient' | 'camo' | 'rainbow' | 'circuit' | 'flames' | 'frost' | 'stars' | 'metallic' | 'paper';
+
 export interface CharacterSkin {
   id: string;
   name: string;
   color: number | string;
   gradient?: number[];
+  pattern?: SkinPattern;
+  patternColors?: string[];
   unlockScore: number;
   icon: string;
   description: string;
@@ -14,6 +18,8 @@ export class CharacterCustomization {
       id: 'classic',
       name: 'Classic White',
       color: 0xFFFFFF,
+      pattern: 'paper',
+      patternColors: ['#FFFFFF', '#F5F5F5', '#E8E8E8'],
       unlockScore: 0,
       icon: '🧻',
       description: 'The original toilet paper roll'
@@ -22,6 +28,8 @@ export class CharacterCustomization {
       id: 'gold',
       name: 'Golden Roll',
       color: 0xFFD700,
+      pattern: 'metallic',
+      patternColors: ['#FFD700', '#DAA520', '#B8860B', '#FFA500'],
       unlockScore: 100,
       icon: '✨',
       description: 'For champions only!'
@@ -30,7 +38,8 @@ export class CharacterCustomization {
       id: 'rainbow',
       name: 'Pride',
       color: 0xFF69B4,
-      gradient: [0xFF0000, 0xFFA500, 0xFFFF00, 0x008000, 0x0000FF, 0x4B0082, 0x9400D3],
+      pattern: 'rainbow',
+      patternColors: ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'],
       unlockScore: 200,
       icon: '🌈',
       description: 'Celebrate diversity!'
@@ -39,7 +48,8 @@ export class CharacterCustomization {
       id: 'neon',
       name: 'Cyber Glow',
       color: 0x00FF00,
-      gradient: [0x00FF00, 0x00FFFF],
+      pattern: 'circuit',
+      patternColors: ['#0D0D0D', '#00FFFF', '#FF00FF', '#00FF00'],
       unlockScore: 300,
       icon: '⚡',
       description: 'Future is now!'
@@ -48,6 +58,8 @@ export class CharacterCustomization {
       id: 'camo',
       name: 'Military',
       color: 0x4B5320,
+      pattern: 'camo',
+      patternColors: ['#556B2F', '#8B7355', '#D2B48C', '#2F4F2F', '#6B8E23'],
       unlockScore: 400,
       icon: '🎖️',
       description: 'Tactical toilet paper'
@@ -56,7 +68,8 @@ export class CharacterCustomization {
       id: 'fire',
       name: 'Hot Stuff',
       color: 0xFF4500,
-      gradient: [0xFF4500, 0xFFD700],
+      pattern: 'flames',
+      patternColors: ['#FF4500', '#FF6600', '#FFD700', '#FF0000', '#FF8C00'],
       unlockScore: 500,
       icon: '🔥',
       description: 'Feeling spicy!'
@@ -65,7 +78,8 @@ export class CharacterCustomization {
       id: 'ice',
       name: 'Cool Ice',
       color: 0x00FFFF,
-      gradient: [0x00FFFF, 0xADD8E6],
+      pattern: 'frost',
+      patternColors: ['#B0E0E6', '#87CEEB', '#FFFFFF', '#E0FFFF', '#ADD8E6'],
       unlockScore: 600,
       icon: '❄️',
       description: 'Chill vibes only'
@@ -74,7 +88,8 @@ export class CharacterCustomization {
       id: 'shadow',
       name: 'Dark Mode',
       color: 0x1a1a2e,
-      gradient: [0x1a1a2e, 0x0f3460],
+      pattern: 'stars',
+      patternColors: ['#1a1a2e', '#16213e', '#0f0f1a', '#FFFFFF', '#E8E8E8'],
       unlockScore: 750,
       icon: '🌙',
       description: 'Stealth mode activated'

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GameState } from '../core/GameState';
-import { CharacterCustomization } from './CharacterCustomization';
+import { CharacterCustomization, CharacterSkin, SkinPattern } from './CharacterCustomization';
 import { JUMP_CONFIG } from '../config/JumpConfig';
 
 const LANE_WIDTH = 3;
@@ -98,30 +98,25 @@ export class RunnerController {
     scene.add(this._mesh);
   }
 
-  private _getMaterialColor(skin: { color: number | string; gradient?: number[] } | undefined): number | string {
+  private _getMaterialColor(skin: CharacterSkin | undefined): number | string {
     if (!skin) return 0xFFFFF0;
 
-    // For gradient skins, use white material since texture contains the gradient
     if (skin.gradient && skin.gradient.length >= 2) {
-      return 0xFFFFFF; // White material for gradient textures
+      return 0xFFFFFF;
     }
-    return skin.color; // Colored material for solid skins
+    return skin.color;
   }
 
   private _hexToCanvasColor(hexColor: number): string {
-    // Convert hex number to CSS color string
     const r = (hexColor >> 16) & 0xFF;
     const g = (hexColor >> 8) & 0xFF;
     const b = hexColor & 0xFF;
     return `rgb(${r}, ${g}, ${b})`;
   }
 
-  private _generateCacheKey(skin: { color: number | string; gradient?: number[] } | undefined): string {
+  private _generateCacheKey(skin: CharacterSkin | undefined): string {
     if (!skin) return 'default';
-    if (skin.gradient && skin.gradient.length >= 2) {
-      return `gradient_${skin.gradient.join('_')}`;
-    }
-    return `solid_${skin.color}`;
+    return `skin_${skin.id}`;
   }
 
   updateSkin(skinId: string): void {
@@ -137,10 +132,9 @@ export class RunnerController {
     }
   }
 
-  private createTPTexture(skin: { color: number | string; gradient?: number[] } | undefined): THREE.CanvasTexture {
+  private createTPTexture(skin: CharacterSkin | undefined): THREE.CanvasTexture {
     const cacheKey = this._generateCacheKey(skin);
     
-    // Check cache first
     if (this._textureCache.has(cacheKey)) {
       const cachedTexture = this._textureCache.get(cacheKey)!;
       cachedTexture.needsUpdate = true;
@@ -152,26 +146,23 @@ export class RunnerController {
     canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
 
-    // Create background (gradient or solid)
-    if (skin && skin.gradient && skin.gradient.length >= 2) {
-      // Create horizontal gradient
+    if (skin?.pattern && skin?.pattern !== 'solid' && skin?.pattern !== 'gradient') {
+      const pattern = skin.pattern as Exclude<SkinPattern, 'solid' | 'gradient'>;
+      const colors = skin.patternColors || ['#FFFFFF'];
+      this._drawPattern(ctx, pattern, colors, 512, 256);
+    } else if (skin && skin.gradient && skin.gradient.length >= 2) {
       const gradient = ctx.createLinearGradient(0, 0, 512, 0);
-      
-      // Add color stops evenly distributed
       skin.gradient.forEach((color, index) => {
         const position = index / (skin.gradient!.length - 1);
         gradient.addColorStop(position, this._hexToCanvasColor(color));
       });
-      
       ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 512, 256);
     } else {
-      // Solid color background
       ctx.fillStyle = '#FFFFF0';
+      ctx.fillRect(0, 0, 512, 256);
     }
-    
-    ctx.fillRect(0, 0, 512, 256);
 
-    // Add spiral pattern overlay
     ctx.strokeStyle = '#E8E8E8';
     ctx.lineWidth = 2;
 
@@ -190,7 +181,6 @@ export class RunnerController {
       ctx.stroke();
     }
 
-    // Add texture dots for more realistic paper look
     ctx.fillStyle = 'rgba(245, 245, 240, 0.3)';
     for (let i = 0; i < 50; i++) {
       const x = Math.random() * 512;
@@ -200,7 +190,6 @@ export class RunnerController {
       ctx.fill();
     }
 
-    // Paper layer lines on rim (visible at top/bottom of roll)
     ctx.strokeStyle = 'rgba(200, 195, 185, 0.4)';
     ctx.lineWidth = 1;
     for (let y = 240; y < 256; y += 3) {
@@ -210,7 +199,6 @@ export class RunnerController {
       ctx.stroke();
     }
 
-    // Create Three.js texture with proper settings
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
@@ -220,10 +208,383 @@ export class RunnerController {
     texture.generateMipmaps = false;
     texture.needsUpdate = true;
 
-    // Cache the texture
     this._textureCache.set(cacheKey, texture);
-
     return texture;
+  }
+
+  private _drawPattern(ctx: CanvasRenderingContext2D, pattern: string, colors: string[], width: number, height: number): void {
+    switch (pattern) {
+      case 'camo':
+        this._drawCamoPattern(ctx, colors, width, height);
+        break;
+      case 'rainbow':
+        this._drawRainbowStripes(ctx, colors, width, height);
+        break;
+      case 'circuit':
+        this._drawCircuitPattern(ctx, colors, width, height);
+        break;
+      case 'flames':
+        this._drawFlamePattern(ctx, colors, width, height);
+        break;
+      case 'frost':
+        this._drawFrostPattern(ctx, colors, width, height);
+        break;
+      case 'stars':
+        this._drawStarfield(ctx, colors, width, height);
+        break;
+      case 'metallic':
+        this._drawMetallicGold(ctx, colors, width, height);
+        break;
+      case 'paper':
+        this._drawPaperTexture(ctx, colors, width, height);
+        break;
+      default:
+        ctx.fillStyle = colors[0] || '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+    }
+  }
+
+  private _drawCamoPattern(ctx: CanvasRenderingContext2D, colors: string[], w: number, h: number): void {
+    const bgColor = colors[0] || '#556B2F';
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, w, h);
+
+    const seed = 12345;
+    const random = (i: number) => {
+      const x = Math.sin(seed + i * 9999) * 10000;
+      return x - Math.floor(x);
+    };
+
+    const blobColors = colors.slice(1);
+    for (let i = 0; i < 12; i++) {
+      ctx.fillStyle = blobColors[i % blobColors.length];
+      ctx.beginPath();
+      
+      const cx = random(i * 3) * w;
+      const cy = random(i * 3 + 1) * h;
+      const rx = 40 + random(i * 3 + 2) * 80;
+      const ry = 30 + random(i * 7) * 60;
+      
+      ctx.ellipse(cx, cy, rx, ry, random(i * 11) * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (let i = 0; i < 8; i++) {
+      ctx.fillStyle = blobColors[(i + 2) % blobColors.length];
+      ctx.beginPath();
+      
+      const cx = random(i * 5 + 20) * w;
+      const cy = random(i * 5 + 21) * h;
+      const rx = 30 + random(i * 5 + 22) * 50;
+      const ry = 25 + random(i * 7 + 10) * 40;
+      
+      ctx.ellipse(cx, cy, rx, ry, random(i * 13) * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  private _drawRainbowStripes(ctx: CanvasRenderingContext2D, colors: string[], w: number, h: number): void {
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    
+    colors.forEach((color, i) => {
+      gradient.addColorStop(i / (colors.length - 1), color);
+    });
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  private _drawCircuitPattern(ctx: CanvasRenderingContext2D, colors: string[], w: number, h: number): void {
+    ctx.fillStyle = colors[0] || '#0D0D0D';
+    ctx.fillRect(0, 0, w, h);
+
+    const traceColors = colors.slice(1);
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 3;
+
+    ctx.strokeStyle = traceColors[0] || '#00FFFF';
+    ctx.shadowColor = traceColors[0] || '#00FFFF';
+    
+    for (let y = 32; y < h; y += 64) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      let x = 0;
+      while (x < w) {
+        const nextX = x + 40 + Math.random() * 80;
+        const midY = y + (Math.random() - 0.5) * 32;
+        ctx.lineTo(nextX / 2 + (x + nextX) / 2, midY);
+        ctx.lineTo(nextX, y);
+        x = nextX;
+      }
+      ctx.stroke();
+    }
+
+    for (let x = 32; x < w; x += 64) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      let y = 0;
+      while (y < h) {
+        const nextY = y + 40 + Math.random() * 80;
+        const midX = x + (Math.random() - 0.5) * 32;
+        ctx.lineTo(midX, nextY / 2 + (y + nextY) / 2);
+        ctx.lineTo(x, nextY);
+        y = nextY;
+      }
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = traceColors[1] || '#FF00FF';
+    ctx.shadowColor = traceColors[1] || '#FF00FF';
+    for (let i = 0; i < 5; i++) {
+      const startX = (i * 100 + 50) % w;
+      const startY = (i * 80 + 30) % h;
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(startX + 60, startY);
+      ctx.lineTo(startX + 60, startY + 80);
+      ctx.lineTo(startX + 120, startY + 80);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = traceColors[0] || '#00FFFF';
+    ctx.shadowBlur = 0;
+    for (let x = 32; x < w; x += 64) {
+      for (let y = 32; y < h; y += 64) {
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  private _drawFlamePattern(ctx: CanvasRenderingContext2D, colors: string[], w: number, h: number): void {
+    const gradient = ctx.createLinearGradient(0, h, 0, 0);
+    gradient.addColorStop(0, colors[0] || '#FF4500');
+    gradient.addColorStop(0.4, colors[1] || '#FF6600');
+    gradient.addColorStop(0.7, colors[2] || '#FFD700');
+    gradient.addColorStop(1, '#8B0000');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = colors[2] || '#FFD700';
+
+    for (let i = 0; i < 8; i++) {
+      const x = (i * 70 + 30) % w;
+      const baseWidth = 30 + Math.random() * 40;
+      
+      ctx.fillStyle = colors[3] || '#FF0000';
+      ctx.beginPath();
+      ctx.moveTo(x - baseWidth / 2, h);
+      ctx.quadraticCurveTo(x - baseWidth / 4, h * 0.6, x, h * 0.2);
+      ctx.quadraticCurveTo(x + baseWidth / 4, h * 0.6, x + baseWidth / 2, h);
+      ctx.fill();
+    }
+
+    for (let i = 0; i < 6; i++) {
+      const x = (i * 90 + 15) % w;
+      const baseWidth = 20 + Math.random() * 30;
+      
+      ctx.fillStyle = colors[4] || '#FF8C00';
+      ctx.beginPath();
+      ctx.moveTo(x - baseWidth / 2, h);
+      ctx.quadraticCurveTo(x - baseWidth / 4, h * 0.5, x + 10, h * 0.15);
+      ctx.quadraticCurveTo(x + baseWidth / 3, h * 0.5, x + baseWidth / 2, h);
+      ctx.fill();
+    }
+
+    for (let i = 0; i < 5; i++) {
+      const x = (i * 110 + 60) % w;
+      const baseWidth = 15 + Math.random() * 20;
+      
+      ctx.fillStyle = colors[2] || '#FFD700';
+      ctx.beginPath();
+      ctx.moveTo(x - baseWidth / 2, h);
+      ctx.quadraticCurveTo(x, h * 0.4, x + 5, h * 0.1);
+      ctx.quadraticCurveTo(x + baseWidth / 2, h * 0.4, x + baseWidth / 2, h);
+      ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
+  }
+
+  private _drawFrostPattern(ctx: CanvasRenderingContext2D, colors: string[], w: number, h: number): void {
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    gradient.addColorStop(0, colors[0] || '#B0E0E6');
+    gradient.addColorStop(0.5, colors[1] || '#87CEEB');
+    gradient.addColorStop(1, colors[4] || '#ADD8E6');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
+
+    const crystalColors = [colors[2] || '#FFFFFF', colors[3] || '#E0FFFF'];
+
+    for (let i = 0; i < 15; i++) {
+      const cx = (i * 37 + 20) % w;
+      const cy = (i * 41 + 30) % h;
+      const size = 15 + (i % 5) * 8;
+      
+      ctx.fillStyle = crystalColors[i % 2];
+      ctx.beginPath();
+      for (let j = 0; j < 6; j++) {
+        const angle = (j / 6) * Math.PI * 2 - Math.PI / 2;
+        const r = j % 2 === 0 ? size : size * 0.5;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        if (j === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + size * 1.5, cy + size * 0.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx - size, cy + size);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    for (let i = 0; i < 40; i++) {
+      const x = Math.random() * w;
+      const y = Math.random() * h;
+      const r = 1 + Math.random() * 2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (let i = 0; i < 10; i++) {
+      const x = Math.random() * w;
+      const y = Math.random() * h;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - 8, y);
+      ctx.lineTo(x + 8, y);
+      ctx.moveTo(x, y - 8);
+      ctx.lineTo(x, y + 8);
+      ctx.stroke();
+    }
+  }
+
+  private _drawStarfield(ctx: CanvasRenderingContext2D, colors: string[], w: number, h: number): void {
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    gradient.addColorStop(0, colors[0] || '#1a1a2e');
+    gradient.addColorStop(0.5, colors[1] || '#16213e');
+    gradient.addColorStop(1, colors[2] || '#0f0f1a');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
+
+    const starColors = [colors[3] || '#FFFFFF', colors[4] || '#E8E8E8'];
+    
+    for (let i = 0; i < 50; i++) {
+      const x = ((i * 73 + 17) % w);
+      const y = ((i * 97 + 31) % h);
+      const size = 1 + (i % 4) * 0.8;
+      const brightness = 0.3 + (i % 5) * 0.15;
+      
+      ctx.fillStyle = starColors[i % 2];
+      ctx.globalAlpha = brightness;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = colors[3] || '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(w * 0.3, h * 0.4, 60, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(w * 0.7, h * 0.6, 40, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+  }
+
+  private _drawMetallicGold(ctx: CanvasRenderingContext2D, colors: string[], w: number, h: number): void {
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    gradient.addColorStop(0, colors[0] || '#FFD700');
+    gradient.addColorStop(0.3, colors[1] || '#DAA520');
+    gradient.addColorStop(0.5, colors[0] || '#FFD700');
+    gradient.addColorStop(0.7, colors[2] || '#B8860B');
+    gradient.addColorStop(1, colors[3] || '#FFA500');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.globalAlpha = 0.3;
+    for (let i = 0; i < 8; i++) {
+      const y = (i * 35 + 10) % h;
+      const waveHeight = 3 + (i % 3) * 2;
+      
+      ctx.strokeStyle = '#FFFFAA';
+      ctx.lineWidth = 2 + (i % 3);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      for (let x = 0; x < w; x += 20) {
+        ctx.quadraticCurveTo(x + 10, y - waveHeight, x + 20, y);
+      }
+      ctx.stroke();
+    }
+
+    ctx.globalAlpha = 0.15;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1;
+    for (let x = 20; x < w; x += 30) {
+      const offset = (x * 7) % 20 - 10;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + offset, h);
+      ctx.stroke();
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  private _drawPaperTexture(ctx: CanvasRenderingContext2D, colors: string[], w: number, h: number): void {
+    ctx.fillStyle = colors[0] || '#FFFFFF';
+    ctx.fillRect(0, 0, w, h);
+
+    const seed = 54321;
+    const random = (i: number) => {
+      const x = Math.sin(seed + i * 7777) * 10000;
+      return x - Math.floor(x);
+    };
+
+    ctx.fillStyle = colors[1] || '#F5F5F5';
+    for (let i = 0; i < 800; i++) {
+      const x = random(i * 2) * w;
+      const y = random(i * 2 + 1) * h;
+      const size = 0.5 + random(i) * 1.5;
+      ctx.fillRect(x, y, size, size);
+    }
+
+    ctx.strokeStyle = 'rgba(220, 220, 215, 0.15)';
+    ctx.lineWidth = 1;
+    for (let y = 2; y < h; y += 4 + Math.random() * 3) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      let x = 0;
+      while (x < w) {
+        x += 20 + Math.random() * 40;
+        ctx.lineTo(x, y + (Math.random() - 0.5) * 2);
+      }
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(200, 200, 195, 0.1)';
+    for (let i = 0; i < 30; i++) {
+      const x = random(i * 3 + 100) * w;
+      const y = random(i * 3 + 101) * h;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 15 + random(i) * 25, 8 + random(i + 50) * 15, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   private createCardboardTexture(): THREE.CanvasTexture {
