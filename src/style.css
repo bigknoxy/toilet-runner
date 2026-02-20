@@ -18,3 +18,35 @@ body {
   height: 100vh;
   background-color: #87CEEB;
 }
+
+#canvas, #canvas canvas {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.milestone-popup {
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  font-size: 2rem;
+  font-weight: bold;
+  color: #FFF;
+  background: linear-gradient(135deg, #8B4513, #D2691E);
+  padding: 1rem 2rem;
+  border-radius: 1rem;
+  border: 3px solid #FFD700;
+  animation: milestone-pop 2s ease-out forwards;
+  z-index: 1000;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+@keyframes milestone-pop {
+  0% { transform: translateX(-50%) scale(0); }
+  20% { transform: translateX(-50%) scale(1.2); }
+  40% { transform: translateX(-50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) scale(0.8); }
+}

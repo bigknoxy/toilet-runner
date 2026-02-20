@@ -888,6 +888,7 @@ export class UIManager {
   }
 
   private _lastNearMissTime = 0;
+  private _reachedMilestones: Set<number> = new Set();
 
   public showScorePopup(text: string, isNearMiss: boolean): void {
     const popup = document.createElement('div');
@@ -929,6 +930,28 @@ export class UIManager {
       toast.classList.remove('visible');
       setTimeout(() => toast.remove(), 300);
     }, 3000);
+  }
+
+  public showMilestonePopup(message: string): void {
+    const popup = document.createElement('div');
+    popup.className = 'milestone-popup';
+    popup.textContent = message;
+    document.body.appendChild(popup);
+
+    // Remove from reached milestones when game restarts
+    setTimeout(() => popup.remove(), 2000);
+  }
+
+  public resetMilestones(): void {
+    this._reachedMilestones.clear();
+  }
+
+  public markMilestoneReached(milestone: number): boolean {
+    if (this._reachedMilestones.has(milestone)) {
+      return false;
+    }
+    this._reachedMilestones.add(milestone);
+    return true;
   }
 
   public updateSkinDisplay(): void {

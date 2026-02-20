@@ -29,11 +29,23 @@ import { ScoreAnimator } from './ui/ScoreAnimator';
 import { HUD } from './ui/HUD';
 import { TrailRenderer } from './game/TrailRenderer';
 import { SpeedLines } from './game/visual/SpeedLines';
+import { InstallPrompt } from './ui/InstallPrompt';
 
 const BASE_SPEED = 10;
 const SPEED_INCREASE = 0.5;
 const SCORE_RATE = 10;
 const SCORE_MILESTONE = 100;
+
+// Milestone system
+const SCORE_MILESTONES = [100, 250, 500, 1000, 2000, 5000];
+const MILESTONE_MESSAGES: Record<number, string> = {
+  100: '💩 Off to a messy start!',
+  250: '🧻 Running low on TP!',
+  500: '🚽 Almost there!',
+  1000: '👑 ROYAL FLUSH!',
+  2000: '🏆 CHAMPION POOPER!',
+  5000: '🌟 LEGENDARY FLUSH!'
+};
 
 class ToiletRunner {
   private sceneManager!: SceneManager;
@@ -68,6 +80,7 @@ class ToiletRunner {
   private _isDying: boolean = false;
   private _deathTimer: number = 0;
   private readonly _deathDuration = 1.0;
+  private reachedMilestones: Set<number> = new Set();
 
   private postProcessing!: PostProcessingManager;
   private dustParticles!: ParticleSystem;
@@ -282,6 +295,7 @@ class ToiletRunner {
   private setupUIAndInput(): void {
     this.input = new InputManager(
       this.handleLaneChange.bind(this),
+      this.handleJump.bind(this),
       this.togglePause.bind(this)
     );
     this.input.setup();
@@ -433,7 +447,12 @@ class ToiletRunner {
       // Update speed lines
       this.speedLines.update(delta, gameSpeed);
 
-      const hitObstacle = this.collision.checkPlayerVsObstacles(this.runner.getMesh(), this.obstacles);
+      const hitObstacle = this.collision.checkPlayerVsObstacles(
+        this.runner.getMesh(), 
+        this.obstacles,
+        this.runner.getYPosition(),
+        this.runner.isJumping()
+      );
       if (!this._isDying && hitObstacle) {
         this.handleCollision(hitObstacle);
         this.runner.startDeathTumble();
@@ -466,6 +485,17 @@ class ToiletRunner {
         this.hud.triggerPulse(); // Enhanced milestone animation
         this.cameraShake.shake(0.08, 0.2); // Light celebratory shake for milestone
         this.handleScoreMilestone();
+      }
+
+      // Check for score milestone popups
+      for (const milestone of SCORE_MILESTONES) {
+        if (newScore >= milestone && !this.reachedMilestones.has(milestone)) {
+          this.reachedMilestones.add(milestone);
+          const message = MILESTONE_MESSAGES[milestone];
+          if (message) {
+            this.ui.showMilestonePopup(message);
+          }
+        }
       }
 
     } else if (this.currentGameState === GameState.PAUSED) {
@@ -640,6 +670,7 @@ class ToiletRunner {
     this._isDying = false;
     this._deathTimer = 0;
     this.passedObstacles.clear();
+    this.reachedMilestones.clear();
     this.audioManager.setLastScoreMilestone(0);
     this.scoreAnimator.reset();
     this.hud.reset();
@@ -654,7 +685,6 @@ class ToiletRunner {
       }
       this.audioManager.playLaneChange();
 
-      // Haptic feedback on mobile
       if ('vibrate' in navigator && navigator.maxTouchPoints > 0) {
         navigator.vibrate(15);
       }
@@ -662,6 +692,17 @@ class ToiletRunner {
       const playerPos = this.runner.getPosition();
       playerPos.z += 0.5;
       this.dustParticles.emitDust(playerPos);
+    }
+  }
+
+  private handleJump(): void {
+    if (this.currentGameState === GameState.PLAYING && !this._isDying) {
+      this.runner.jump();
+      this.audioManager.playLaneChange();
+
+      if ('vibrate' in navigator && navigator.maxTouchPoints > 0) {
+        navigator.vibrate(15);
+      }
     }
   }
 
@@ -711,11 +752,5 @@ class ToiletRunner {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const game = new ToiletRunner();
-
-  // Register service worker for offline support
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {
-      // Service worker registration failed - app still works without it
-    });
-  }
+  new InstallPrompt();
 });

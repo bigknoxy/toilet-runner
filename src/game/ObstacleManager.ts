@@ -115,7 +115,7 @@ export class ObstacleManager {
       face.castShadow = false;
       face.receiveShadow = false;
       face.userData.isEmojiFace = true;
-      face.userData.emojiIndex = Math.floor(Math.random() * 5);
+      face.userData.emojiIndex = Math.floor(Math.random() * 4);
       group.add(face);
     } else {
       // Eyes centered on middle ring
@@ -259,7 +259,7 @@ export class ObstacleManager {
     inactiveObstacle.speedVariation = speedMultiplier;
     inactiveObstacle.scale = 0.9 + Math.random() * 0.2;
     inactiveObstacle.rotationY = (Math.random() - 0.5) * 0.5;
-    inactiveObstacle.emojiIndex = Math.floor(Math.random() * 5);
+    inactiveObstacle.emojiIndex = Math.floor(Math.random() * 4);
     this._activeCount++;
 
     // Update emoji face UVs on this obstacle's own geometry
