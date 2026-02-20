@@ -22,6 +22,8 @@ Toilet Runner is a 3D endless runner game built with **Bun + Vite + Three.js + T
 # Development
 bun run dev                    # Start Vite dev server (port 5173)
 
+> **IMPORTANT: Port 5173 is MANDATORY for `bun run dev`.** Firewall rules are configured for this port to allow testing on mobile devices over the network. Never use a different port.
+
 # Build
 bun run build                  # Production build to dist/
 bun run preview                # Preview built dist/
