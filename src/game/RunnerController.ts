@@ -1,21 +1,21 @@
 import * as THREE from 'three';
 import { GameState } from '../core/GameState';
 import { CharacterCustomization } from './CharacterCustomization';
+import { JUMP_CONFIG } from '../config/JumpConfig';
 
 const LANE_WIDTH = 3;
 const LERP_SPEED = 6;
 const PLAYER_RADIUS = 0.8;
-// Player Z position: -4 for lower screen position (closer to camera, ~9 unit gap)
 const PLAYER_Z = -4;
+const GROUND_Y = 0.5;
 
-// Character personality animation constants
-const IDLE_WOBBLE_SPEED = 3;      // Speed of idle wobble
-const IDLE_WOBBLE_AMPLITUDE = 0.05;  // Angle of idle wobble (radians)
-const TILT_ANGLE = 0.25;          // Max tilt radians (~14 degrees)
-const TILT_LERP_SPEED = 10;       // How fast tilt engages
-const TILT_RETURN_SPEED = 6;      // How fast tilt returns to 0
-const SUCCESS_BOUNCE = 0.2;       // Bounce height on successful dodge
-const NEAR_OBSTACLE_SPEED = 8;    // Wobble speed when near obstacle
+const IDLE_WOBBLE_SPEED = 3;
+const IDLE_WOBBLE_AMPLITUDE = 0.05;
+const TILT_ANGLE = 0.25;
+const TILT_LERP_SPEED = 10;
+const TILT_RETURN_SPEED = 6;
+const SUCCESS_BOUNCE = 0.2;
+const NEAR_OBSTACLE_SPEED = 8;
 
 export class RunnerController {
   private _mesh: THREE.Group;
@@ -24,13 +24,12 @@ export class RunnerController {
   private _currentX: number = 0;
   private _targetX: number = 0;
   private _speed: number = 0;
-  private _bounceY: number = 0;
   private _wobbleTime: number = 0;
   private _isChangingLanes: boolean = false;
   private _isNearObstacle: boolean = false;
   private _successBounce: number = 0;
-  private _idleTime: number = 0;  // Track idle time for continuous wobble
-  private _scaleY: number = 1;    // For squash/stretch effect
+  private _idleTime: number = 0;
+  private _scaleY: number = 1;
   private _scaleX: number = 1;
   private _tiltAngle: number = 0;
   private _isDead: boolean = false;
@@ -38,6 +37,13 @@ export class RunnerController {
   private _characterCustomization: CharacterCustomization;
   private _tpMaterial: THREE.MeshLambertMaterial;
   private _textureCache: Map<string, THREE.CanvasTexture> = new Map();
+
+  private _isJumping: boolean = false;
+  private _isGrounded: boolean = true;
+  private _velocityY: number = 0;
+  private _coyoteTimer: number = 0;
+  private _jumpBufferTimer: number = 0;
+  private _landSquashTimer: number = 0;
 
   constructor(scene: THREE.Scene, characterCustomization: CharacterCustomization, 
               selectedSkinId: string = 'classic') {
@@ -299,8 +305,20 @@ export class RunnerController {
     }
   }
 
+  jump(): void {
+    if (this._isDead) return;
+    this._jumpBufferTimer = JUMP_CONFIG.JUMP_BUFFER_TIME;
+  }
+
+  isJumping(): boolean {
+    return this._isJumping;
+  }
+
+  getYPosition(): number {
+    return this._mesh.position.y;
+  }
+
   update(delta: number): void {
-    // Death tumble animation
     if (this._isDead) {
       this._tpMesh.rotation.x += delta * 8;
       this._deathBounceVelocity -= delta * 12;
@@ -312,16 +330,53 @@ export class RunnerController {
     this._currentX = THREE.MathUtils.lerp(this._currentX, this._targetX, LERP_SPEED * delta);
     this._mesh.position.x = this._currentX;
 
-    let yOffset = 0.5;
+    if (this._isGrounded) {
+      this._coyoteTimer = 0;
+    } else {
+      this._coyoteTimer += delta;
+    }
 
-    // Check if lane change is complete
+    this._jumpBufferTimer = Math.max(0, this._jumpBufferTimer - delta);
+
+    if (this._jumpBufferTimer > 0 && 
+        (this._isGrounded || this._coyoteTimer < JUMP_CONFIG.COYOTE_TIME)) {
+      this._velocityY = JUMP_CONFIG.JUMP_FORCE;
+      this._isJumping = true;
+      this._isGrounded = false;
+      this._jumpBufferTimer = 0;
+      this._coyoteTimer = JUMP_CONFIG.COYOTE_TIME;
+    }
+
+    this._velocityY -= JUMP_CONFIG.GRAVITY * delta;
+    this._mesh.position.y += this._velocityY * delta;
+
+    if (this._mesh.position.y <= GROUND_Y) {
+      if (this._isJumping) {
+        this._landSquashTimer = JUMP_CONFIG.LAND_SQUASH_DURATION;
+        this._scaleY = JUMP_CONFIG.LAND_SQUASH_SCALE;
+        this._scaleX = 1.2;
+      }
+      this._mesh.position.y = GROUND_Y;
+      this._velocityY = 0;
+      this._isJumping = false;
+      this._isGrounded = true;
+    }
+
+    if (this._landSquashTimer > 0) {
+      this._landSquashTimer -= delta;
+      if (this._landSquashTimer <= 0) {
+        this._landSquashTimer = 0;
+      }
+    }
+
+    let yOffset = GROUND_Y;
+
     if (this._isChangingLanes) {
       if (Math.abs(this._currentX - this._targetX) < 0.05) {
         this._isChangingLanes = false;
       }
     }
 
-    // Tilt during lane changes
     const dx = this._targetX - this._currentX;
     if (this._isChangingLanes && Math.abs(dx) > 0.05) {
       const targetTilt = -Math.sign(dx) * TILT_ANGLE;
@@ -330,38 +385,41 @@ export class RunnerController {
       this._tiltAngle = THREE.MathUtils.lerp(this._tiltAngle, 0, TILT_RETURN_SPEED * delta);
     }
 
-    // Scale normalization (smooth transition to normal)
-    this._scaleY = THREE.MathUtils.lerp(this._scaleY, 1, delta * 5);
-    this._scaleX = THREE.MathUtils.lerp(this._scaleX, 1, delta * 5);
+    if (!this._isJumping) {
+      this._scaleY = THREE.MathUtils.lerp(this._scaleY, 1, delta * 8);
+      this._scaleX = THREE.MathUtils.lerp(this._scaleX, 1, delta * 8);
+    } else {
+      const jumpProgress = this._velocityY > 0 ? 0.5 : 0.5;
+      const stretchFactor = 1 + Math.abs(this._velocityY) * 0.02;
+      this._scaleY = THREE.MathUtils.lerp(this._scaleY, stretchFactor, delta * 5);
+      this._scaleX = THREE.MathUtils.lerp(this._scaleX, 1 / stretchFactor, delta * 5);
+    }
 
-    // Idle personality: gentle wobble animation (only when NOT changing lanes)
     let wobbleZ = 0;
-    if (!this._isChangingLanes) {
+    if (!this._isChangingLanes && !this._isJumping) {
       this._idleTime += delta;
       const wobbleSpeed = this._isNearObstacle ? NEAR_OBSTACLE_SPEED : IDLE_WOBBLE_SPEED;
       const wobbleAmp = this._isNearObstacle ? IDLE_WOBBLE_AMPLITUDE * 1.5 : IDLE_WOBBLE_AMPLITUDE;
 
       wobbleZ = Math.sin(this._idleTime * wobbleSpeed) * wobbleAmp;
 
-      // Slight bounce when near obstacle (nervous animation)
       if (this._isNearObstacle) {
         yOffset += Math.sin(this._idleTime * 15) * 0.03;
       }
     }
 
-    // Combine wobble + tilt
     this._tpMesh.rotation.z = wobbleZ + this._tiltAngle;
 
-    // Success bounce effect
     if (this._successBounce > 0.01) {
       yOffset += this._successBounce;
       this._successBounce *= 0.8;
       this._scaleY = 1 + this._successBounce * 2;
     }
 
-    this._mesh.position.y = yOffset;
+    if (!this._isJumping) {
+      this._mesh.position.y = yOffset;
+    }
 
-    // Apply squash/stretch scale to the mesh
     this._mesh.scale.set(this._scaleX, this._scaleY, this._scaleX);
   }
 
@@ -410,7 +468,6 @@ export class RunnerController {
     this._currentX = 0;
     this._targetX = 0;
     this._speed = 0;
-    // No initialization needed since these are no longer used
     this._isChangingLanes = false;
     this._isNearObstacle = false;
     this._successBounce = 0;
@@ -420,11 +477,16 @@ export class RunnerController {
     this._tiltAngle = 0;
     this._isDead = false;
     this._deathBounceVelocity = 0;
-    this._mesh.position.set(0, 0.5, PLAYER_Z);
+    this._isJumping = false;
+    this._isGrounded = true;
+    this._velocityY = 0;
+    this._coyoteTimer = 0;
+    this._jumpBufferTimer = 0;
+    this._landSquashTimer = 0;
+    this._mesh.position.set(0, GROUND_Y, PLAYER_Z);
     this._tpMesh.rotation.set(0, 0, 0);
     this._mesh.scale.set(1, 1, 1);
-    
-    // Restore selected skin
+
     const savedSkinId = this._characterCustomization.getSelectedSkinId?.() || 'classic';
     this.updateSkin(savedSkinId);
   }
