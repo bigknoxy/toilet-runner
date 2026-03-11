@@ -23,6 +23,7 @@ import { ParticleSystem, ParticlePresets, ParticleType } from './game/visual/Par
 import { MaterialFactory } from './game/visual/MaterialFactory';
 import { CharacterCustomization } from './game/CharacterCustomization';
 import { DailyChallengeSystem } from './game/DailyChallenges';
+import { ShopManager } from './game/ShopManager';
 import { StatsManager } from './core/StatsManager';
 import { CameraShake } from './game/CameraShake';
 import { ScoreAnimator } from './ui/ScoreAnimator';
@@ -71,6 +72,7 @@ class ToiletRunner {
   private leaderboard!: LeaderboardManager;
   private characterCustomization!: CharacterCustomization;
   private dailyChallenges!: DailyChallengeSystem;
+  private shopManager!: ShopManager;
   private statsManager!: StatsManager;
   private cameraShake!: CameraShake;
   private scoreAnimator!: ScoreAnimator;
@@ -87,6 +89,8 @@ class ToiletRunner {
   private _deathTimer: number = 0;
   private readonly _deathDuration = 1.0;
   private reachedMilestones: Set<number> = new Set();
+  private _shieldActive: boolean = false;
+  private _extraLifeAvailable: boolean = false;
 
   private postProcessing!: PostProcessingManager;
   private dustParticles!: ParticleSystem;
@@ -275,6 +279,10 @@ class ToiletRunner {
     this.dailyChallenges = new DailyChallengeSystem();
     this.dailyChallenges.setStatsManager(this.statsManager);
 
+    // Initialize shop manager
+    this.shopManager = new ShopManager();
+    this.shopManager.setDailyChallenges(this.dailyChallenges);
+
     // Initialize character customization
     this.characterCustomization = new CharacterCustomization();
     this.characterCustomization.setStatsManager(this.statsManager);
@@ -319,12 +327,21 @@ class ToiletRunner {
     this.ui.setOnSkinsCallback(this.showSkinsScreen.bind(this));
     this.ui.setOnChallengesCallback(this.showChallengesScreen.bind(this));
     this.ui.setOnStatsCallback(this.showStatsScreen.bind(this));
+    this.ui.setOnShopCallback(this.showShopScreen.bind(this));
 
     // Skin selection callback
     this.ui.setOnSelectSkinCallback((skinId: string) => {
       if (this.statsManager.selectSkin(skinId)) {
         this.runner.updateSkin(skinId);
         this.updateSkinDisplay();
+      }
+    });
+
+    // Shop purchase callback
+    this.ui.setOnPurchaseUpgradeCallback((upgradeId: string) => {
+      const result = this.shopManager.purchase(upgradeId);
+      if (result.success) {
+        this.updateShopDisplay();
       }
     });
 
@@ -359,7 +376,8 @@ class ToiletRunner {
       }
 
       const speedIncrease = Math.floor(this.survivalTime) * SPEED_INCREASE;
-      const gameSpeed = BASE_SPEED + speedIncrease;
+      const speedReduction = this.shopManager.getSpeedReduction();
+      const gameSpeed = BASE_SPEED + speedIncrease * (1 - speedReduction);
 
       // Update survival time and challenge progress
       this.survivalTime += delta;
@@ -395,9 +413,11 @@ class ToiletRunner {
           const isNearMiss = lateralDist < NEAR_MISS_MAX_DIST && lateralDist > SAME_LANE_THRESHOLD;
 
           if (isNearMiss) {
-            // Near miss - adjacent lane dodge
-            this.score += NEAR_MISS_BONUS;
-            this.ui.showScorePopup('+10', true);
+            // Near miss - adjacent lane dodge (with coin magnet bonus)
+            const magnetBonus = this.shopManager.getCoinMagnetBonus();
+            const nearMissScore = NEAR_MISS_BONUS + magnetBonus;
+            this.score += nearMissScore;
+            this.ui.showScorePopup(`+${nearMissScore}`, true);
             this.runner.triggerSuccessBounce();
           } else if (lateralDist <= SAME_LANE_THRESHOLD) {
             // Close pass - same lane, jumped over
@@ -464,11 +484,20 @@ class ToiletRunner {
         this.runner.isJumping()
       );
       if (!this._isDying && hitObstacle) {
-        this.handleCollision(hitObstacle);
-        this.runner.startDeathTumble();
-        this._isDying = true;
-        this._deathTimer = 0;
-        this.showDeathFlash();
+        // Check for shield first
+        if (this._shieldActive) {
+          this._shieldActive = false;
+          this.handleShieldHit(hitObstacle);
+        } else if (this._extraLifeAvailable) {
+          this._extraLifeAvailable = false;
+          this.handleExtraLife(hitObstacle);
+        } else {
+          this.handleCollision(hitObstacle);
+          this.runner.startDeathTumble();
+          this._isDying = true;
+          this._deathTimer = 0;
+          this.showDeathFlash();
+        }
       }
 
       const prevScore = Math.floor(this.score);
@@ -535,6 +564,30 @@ class ToiletRunner {
     this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
   }
 
+  private handleShieldHit(hitPos: { x: number; y: number; z: number; lane: number }): void {
+    this.audioManager.playCollision();
+    this.cameraShake.shake(0.15, 0.2);
+    
+    const shieldPos = new THREE.Vector3(hitPos.x, hitPos.y, hitPos.z);
+    this.sparkleParticles.emitSparkle(shieldPos);
+    this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
+    
+    this.ui.showScorePopup('SHIELD!', true);
+  }
+
+  private handleExtraLife(hitPos: { x: number; y: number; z: number; lane: number }): void {
+    this.audioManager.playCollision();
+    this.cameraShake.shake(0.2, 0.3);
+    
+    const revivePos = new THREE.Vector3(hitPos.x, hitPos.y, hitPos.z);
+    for (let i = 0; i < 5; i++) {
+      this.sparkleParticles.emitSparkle(revivePos);
+    }
+    this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
+    
+    this.ui.showScorePopup('REVIVED!', true);
+  }
+
   private showDeathFlash(): void {
     const flash = document.createElement('div');
     flash.style.cssText = 'position:fixed;inset:0;background:white;opacity:0.6;z-index:9000;pointer-events:none;transition:opacity 0.3s ease-out;';
@@ -559,6 +612,11 @@ class ToiletRunner {
     this.currentGameState = GameState.PLAYING;
     this.ui.setGameState(this.currentGameState);
     this.reset();
+    
+    // Apply shop upgrades at start of run
+    this._shieldActive = this.shopManager.hasShield();
+    this._extraLifeAvailable = this.shopManager.hasExtraLife();
+    
     this.audioManager.playStartGame();
     this.statsManager.startSession();
   }
@@ -651,6 +709,18 @@ class ToiletRunner {
   public showStatsScreen(): void {
     this.currentGameState = GameState.STATS;
     this.ui.setGameState(this.currentGameState);
+  }
+
+  public showShopScreen(): void {
+    this.currentGameState = GameState.SHOP;
+    this.ui.setGameState(this.currentGameState);
+    this.updateShopDisplay();
+  }
+
+  private updateShopDisplay(): void {
+    const upgrades = this.shopManager.getUpgrades();
+    const coinBalance = this.shopManager.getCoinBalance();
+    this.ui.updateShopDisplay(upgrades, coinBalance);
   }
 
   public restartGame(): void {

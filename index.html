@@ -85,6 +85,10 @@
           </button>
         </div>
         <div class="start-nav-buttons">
+          <button id="shop-button" class="btn btn-nav menu-item" aria-label="Shop">
+            <span class="btn-icon" aria-hidden="true">&#128722;</span>
+            <span class="btn-text">Shop</span>
+          </button>
           <button id="skins-button" class="btn btn-nav menu-item" aria-label="Character Skins">
             <span class="btn-icon" aria-hidden="true">&#127912;</span>
             <span class="btn-text">Skins</span>
@@ -227,6 +231,25 @@
       </div>
       <div class="modal-footer stats-footer">
         <button id="back-from-stats-button" class="btn btn-secondary menu-item">&larr; Back</button>
+      </div>
+    </div>
+
+    <!-- Shop Screen -->
+    <div class="modal modal-content" id="shop-screen" style="display: none;" role="dialog" aria-label="Shop">
+      <div class="modal-header">
+        <h1>&#128722; Power-Up Shop</h1>
+        <div class="shop-header-info">
+          <div class="coin-balance" id="shop-coin-balance">
+            <span class="coin-icon" aria-hidden="true">&#129689;</span>
+            <span class="coin-value" id="shop-coin-value">0</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-body shop-body">
+        <div id="shop-list" class="shop-list" role="list" aria-label="Upgrades for purchase"></div>
+      </div>
+      <div class="modal-footer shop-footer">
+        <button id="back-from-shop-button" class="btn btn-secondary menu-item">&larr; Back</button>
       </div>
     </div>
   </div>

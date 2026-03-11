@@ -39,7 +39,9 @@ export class UIManager {
   private _onSkins: (() => void) | null = null;
   private _onChallenges: (() => void) | null = null;
   private _onStats: (() => void) | null = null;
+  private _onShop: (() => void) | null = null;
   private _onSelectSkin: ((skinId: string) => void) | null = null;
+  private _onPurchaseUpgrade: ((upgradeId: string) => void) | null = null;
 
   // System references
   private dailyChallenges: DailyChallengeSystem | null = null;
@@ -199,6 +201,18 @@ export class UIManager {
       });
     }
 
+    // Shop button handler
+    const shopButton = document.getElementById('shop-button');
+    if (shopButton) {
+      shopButton.addEventListener('click', (e: Event) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        if (this._onShop) {
+          this._onShop();
+        }
+      });
+    }
+
     // Home button handler (for game over screen)
     const homeButton = document.getElementById('home-button');
     if (homeButton) {
@@ -254,6 +268,17 @@ export class UIManager {
     const backFromStatsButton = document.getElementById('back-from-stats-button');
     if (backFromStatsButton) {
       backFromStatsButton.addEventListener('click', (e: Event) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        if (this._onBackToMenu) {
+          this._onBackToMenu();
+        }
+      });
+    }
+
+    const backFromShopButton = document.getElementById('back-from-shop-button');
+    if (backFromShopButton) {
+      backFromShopButton.addEventListener('click', (e: Event) => {
         e.stopPropagation();
         e.stopImmediatePropagation();
         if (this._onBackToMenu) {
@@ -385,6 +410,17 @@ export class UIManager {
     }
   }
 
+  public showShopScreen(): void {
+    this.hideAllScreens();
+    const shopScreen = document.getElementById('shop-screen');
+    if (shopScreen && this._overlay) {
+      this._overlay.classList.remove('hidden');
+      shopScreen.classList.remove('hidden');
+      this._overlay.classList.add('visible');
+      requestAnimationFrame(() => { shopScreen.classList.add('visible'); });
+    }
+  }
+
   public hideLeaderboardScreen(): void {
     if (this._leaderboardScreen && this._overlay) {
       this._overlay.classList.add('hidden');
@@ -438,6 +474,12 @@ export class UIManager {
     if (statsScreen) {
       statsScreen.classList.add('hidden');
       statsScreen.classList.remove('visible');
+    }
+
+    const shopScreen = document.getElementById('shop-screen');
+    if (shopScreen) {
+      shopScreen.classList.add('hidden');
+      shopScreen.classList.remove('visible');
     }
 
     // Hide pause button on all non-gameplay screens
@@ -580,8 +622,16 @@ export class UIManager {
     this._onStats = callback;
   }
 
+  public setOnShopCallback(callback: () => void): void {
+    this._onShop = callback;
+  }
+
   public setOnSelectSkinCallback(callback: (skinId: string) => void): void {
     this._onSelectSkin = callback;
+  }
+
+  public setOnPurchaseUpgradeCallback(callback: (upgradeId: string) => void): void {
+    this._onPurchaseUpgrade = callback;
   }
 
   public setDailyChallenges(dailyChallenges: DailyChallengeSystem): void {
@@ -874,6 +924,10 @@ export class UIManager {
         this.showStatsScreen();
         this.hidePauseButton();
         break;
+      case GameState.SHOP:
+        this.showShopScreen();
+        this.hidePauseButton();
+        break;
       default:
         break;
     }
@@ -937,6 +991,58 @@ export class UIManager {
 
   public updateSkinDisplay(): void {
     // Delegated to main ToiletRunner class via callback
+  }
+
+  public updateShopDisplay(upgrades: any[], coinBalance: number): void {
+    const shopList = document.getElementById('shop-list');
+    if (!shopList) return;
+
+    const coinValueElement = document.getElementById('shop-coin-value');
+    if (coinValueElement) {
+      coinValueElement.textContent = coinBalance.toString();
+    }
+
+    shopList.innerHTML = '';
+
+    upgrades.forEach((upgrade: any) => {
+      const isMaxed = upgrade.currentLevel >= upgrade.maxLevel;
+      const cost = upgrade.cost * (upgrade.currentLevel + 1);
+      const canAfford = coinBalance >= cost;
+
+      const item = document.createElement('div');
+      item.className = `shop-item ${isMaxed ? 'maxed' : ''}`;
+      item.innerHTML = `
+        <div class="shop-icon">${upgrade.icon}</div>
+        <div class="shop-info">
+          <div class="shop-name">${upgrade.name}</div>
+          <div class="shop-description">${upgrade.description}</div>
+          <div class="shop-effect">${upgrade.effect(upgrade.currentLevel)}</div>
+        </div>
+        <div class="shop-action">
+          ${isMaxed 
+            ? '<div class="shop-purchased">MAXED</div>'
+            : `<button class="shop-buy-btn" data-upgrade-id="${upgrade.id}" ${!canAfford ? 'disabled' : ''}>Buy</button>
+               <div class="shop-cost">${cost} coins</div>`
+          }
+          ${upgrade.maxLevel > 1 && !isMaxed 
+            ? `<div class="shop-level">Level ${upgrade.currentLevel}/${upgrade.maxLevel}</div>`
+            : ''
+          }
+        </div>
+      `;
+
+      const buyBtn = item.querySelector('.shop-buy-btn');
+      if (buyBtn && !isMaxed) {
+        buyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (this._onPurchaseUpgrade) {
+            this._onPurchaseUpgrade(upgrade.id);
+          }
+        });
+      }
+
+      shopList.appendChild(item);
+    });
   }
 
   private _updateCoinDisplay(): void {
