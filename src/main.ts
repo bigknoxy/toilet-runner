@@ -487,9 +487,11 @@ class ToiletRunner {
         // Check for shield first
         if (this._shieldActive) {
           this._shieldActive = false;
+          this.updateUpgradeHud();
           this.handleShieldHit(hitObstacle);
         } else if (this._extraLifeAvailable) {
           this._extraLifeAvailable = false;
+          this.updateUpgradeHud();
           this.handleExtraLife(hitObstacle);
         } else {
           this.handleCollision(hitObstacle);
@@ -617,8 +619,20 @@ class ToiletRunner {
     this._shieldActive = this.shopManager.hasShield();
     this._extraLifeAvailable = this.shopManager.hasExtraLife();
     
+    // Update HUD with active upgrades
+    this.updateUpgradeHud();
+    
     this.audioManager.playStartGame();
     this.statsManager.startSession();
+  }
+
+  private updateUpgradeHud(): void {
+    this.ui.updateUpgradeHud({
+      shield: this._shieldActive,
+      extraLife: this._extraLifeAvailable,
+      coinMagnetLevel: this.shopManager.getUpgradeLevel('coinMagnet'),
+      speedControlLevel: this.shopManager.getUpgradeLevel('speedControl')
+    });
   }
 
   private endGame(): void {
