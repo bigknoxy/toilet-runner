@@ -854,6 +854,58 @@ export class UIManager {
     }
   }
 
+  public showUpgradeHud(): void {
+    const hud = document.getElementById('upgrade-hud');
+    if (hud) {
+      hud.classList.remove('hidden');
+    }
+  }
+
+  public hideUpgradeHud(): void {
+    const hud = document.getElementById('upgrade-hud');
+    if (hud) {
+      hud.classList.add('hidden');
+    }
+  }
+
+  public updateUpgradeHud(upgrades: {
+    shield: boolean;
+    extraLife: boolean;
+    coinMagnetLevel: number;
+    speedControlLevel: number;
+  }): void {
+    const shieldEl = document.getElementById('shield-indicator');
+    const extraLifeEl = document.getElementById('extra-life-indicator');
+    const magnetLevelEl = document.getElementById('magnet-level');
+    const speedLevelEl = document.getElementById('speed-level');
+
+    if (shieldEl) {
+      shieldEl.classList.toggle('active', upgrades.shield);
+      shieldEl.classList.toggle('used', !upgrades.shield);
+    }
+
+    if (extraLifeEl) {
+      extraLifeEl.classList.toggle('active', upgrades.extraLife);
+      extraLifeEl.classList.toggle('used', !upgrades.extraLife);
+    }
+
+    if (magnetLevelEl) {
+      magnetLevelEl.textContent = upgrades.coinMagnetLevel.toString();
+      const parent = magnetLevelEl.closest('.upgrade-indicator');
+      if (parent) {
+        parent.classList.toggle('active', upgrades.coinMagnetLevel > 0);
+      }
+    }
+
+    if (speedLevelEl) {
+      speedLevelEl.textContent = upgrades.speedControlLevel.toString();
+      const parent = speedLevelEl.closest('.upgrade-indicator');
+      if (parent) {
+        parent.classList.toggle('active', upgrades.speedControlLevel > 0);
+      }
+    }
+  }
+
   public showPauseScreen(): void {
     this.hideAllScreens();
     if (this._pauseScreen && this._overlay) {
@@ -894,19 +946,23 @@ export class UIManager {
         this.showStartScreen();
         this.hideScoreDisplay();
         this.hidePauseButton();
+        this.hideUpgradeHud();
         break;
       case GameState.PLAYING:
         this.hideAllScreens();
         this.showScoreDisplay();
         this.showPauseButton();
+        this.showUpgradeHud();
         break;
       case GameState.PAUSED:
         this.showPauseScreen();
         this.hidePauseButton();
+        this.hideUpgradeHud();
         break;
       case GameState.GAMEOVER:
         this.hideScoreDisplay();
         this.hidePauseButton();
+        this.hideUpgradeHud();
         break;
       case GameState.LEADERBOARD:
         this.showLeaderboardScreen();

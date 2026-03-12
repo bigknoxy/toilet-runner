@@ -55,6 +55,24 @@
 
   <div id="score-display" role="status" aria-live="polite" aria-label="Score">0</div>
 
+  <!-- Upgrade Indicators HUD -->
+  <div id="upgrade-hud" class="upgrade-hud hidden">
+    <div class="upgrade-indicator" id="shield-indicator" data-upgrade="shield" title="Shield Active">
+      <span class="upgrade-icon">🛡️</span>
+    </div>
+    <div class="upgrade-indicator" id="extra-life-indicator" data-upgrade="extraLife" title="Extra Life Ready">
+      <span class="upgrade-icon">💫</span>
+    </div>
+    <div class="upgrade-indicator" id="coin-magnet-indicator" data-upgrade="coinMagnet" title="Coin Magnet">
+      <span class="upgrade-icon">🧲</span>
+      <span class="upgrade-level" id="magnet-level">0</span>
+    </div>
+    <div class="upgrade-indicator" id="speed-control-indicator" data-upgrade="speedControl" title="Speed Control">
+      <span class="upgrade-icon">⏱️</span>
+      <span class="upgrade-level" id="speed-level">0</span>
+    </div>
+  </div>
+
   <!-- Pause Button - Hidden by default, shown during gameplay -->
   <div id="pause-button" style="display: none;">
     <button id="pause-btn" aria-label="Pause Game">

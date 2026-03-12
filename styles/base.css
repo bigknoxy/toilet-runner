@@ -55,3 +55,113 @@ html, body {
 .install-button:active {
   transform: translateX(-50%) scale(0.95);
 }
+
+/* Score Display */
+#score-display {
+  position: fixed;
+  top: max(env(safe-area-inset-top, 20px), 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(28px, 6vw, 48px);
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  pointer-events: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+#score-display.bump {
+  transform: translateX(-50%) scale(1.15);
+}
+
+/* Upgrade Indicators HUD */
+.upgrade-hud {
+  position: fixed;
+  top: max(env(safe-area-inset-top, 20px), 20px);
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.upgrade-hud.hidden {
+  display: none;
+}
+
+.upgrade-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+  opacity: 0.4;
+}
+
+.upgrade-indicator.active {
+  opacity: 1;
+  border-color: rgba(76, 175, 80, 0.8);
+  box-shadow: 0 0 12px rgba(76, 175, 80, 0.4);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.upgrade-indicator.used {
+  opacity: 0.3;
+  border-color: rgba(255, 255, 255, 0.1);
+  animation: none;
+}
+
+.upgrade-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.upgrade-level {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: var(--primary, #5dade2);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+  }
+}
+
+@media (max-width: 479px) {
+  .upgrade-hud {
+    left: 10px;
+    gap: 6px;
+  }
+  
+  .upgrade-indicator {
+    width: 38px;
+    height: 38px;
+  }
+  
+  .upgrade-icon {
+    font-size: 18px;
+  }
+}
