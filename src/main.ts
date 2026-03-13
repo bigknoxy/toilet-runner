@@ -25,6 +25,7 @@ import { CharacterCustomization } from './game/CharacterCustomization';
 import { DailyChallengeSystem } from './game/DailyChallenges';
 import { ShopManager } from './game/ShopManager';
 import { StatsManager } from './core/StatsManager';
+import { AnalyticsManager } from './core/AnalyticsManager';
 import { CameraShake } from './game/CameraShake';
 import { ScoreAnimator } from './ui/ScoreAnimator';
 import { HUD } from './ui/HUD';
@@ -74,6 +75,7 @@ class ToiletRunner {
   private dailyChallenges!: DailyChallengeSystem;
   private shopManager!: ShopManager;
   private statsManager!: StatsManager;
+  private analyticsManager!: AnalyticsManager;
   private cameraShake!: CameraShake;
   private scoreAnimator!: ScoreAnimator;
   private hud!: HUD;
@@ -268,6 +270,10 @@ class ToiletRunner {
     // Initialize stats manager (unified)
     this.statsManager = new StatsManager();
 
+    // Initialize analytics manager
+    this.analyticsManager = new AnalyticsManager();
+    this.analyticsManager.initialize('1.6.0');
+
     // Initialize score animator
     this.scoreAnimator = new ScoreAnimator();
 
@@ -342,6 +348,12 @@ class ToiletRunner {
       const result = this.shopManager.purchase(upgradeId);
       if (result.success) {
         this.updateShopDisplay();
+        this.analyticsManager.trackUpgradePurchase(
+          upgradeId,
+          this.shopManager.getUpgrades().find(u => u.id === upgradeId)?.cost ?? 0,
+          this.shopManager.getUpgradeLevel(upgradeId),
+          this.shopManager.getCoinBalance()
+        );
       }
     });
 
@@ -536,6 +548,7 @@ class ToiletRunner {
           if (message) {
             this.ui.showMilestonePopup(message);
           }
+          this.analyticsManager.trackMilestoneReached(milestone, Math.floor(newScore));
         }
       }
 
@@ -575,6 +588,8 @@ class ToiletRunner {
     this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
     
     this.ui.showScorePopup('SHIELD!', true);
+    
+    this.analyticsManager.trackShieldUsed(Math.floor(this.score));
   }
 
   private handleExtraLife(hitPos: { x: number; y: number; z: number; lane: number }): void {
@@ -588,6 +603,8 @@ class ToiletRunner {
     this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
     
     this.ui.showScorePopup('REVIVED!', true);
+    
+    this.analyticsManager.trackExtraLifeUsed(Math.floor(this.score));
   }
 
   private showDeathFlash(): void {
@@ -622,6 +639,14 @@ class ToiletRunner {
     // Update HUD with active upgrades
     this.updateUpgradeHud();
     
+    // Track game start
+    this.analyticsManager.trackGameStart({
+      shield: this._shieldActive,
+      extraLife: this._extraLifeAvailable,
+      coinMagnetLevel: this.shopManager.getUpgradeLevel('coinMagnet'),
+      speedControlLevel: this.shopManager.getUpgradeLevel('speedControl')
+    });
+    
     this.audioManager.playStartGame();
     this.statsManager.startSession();
   }
@@ -650,6 +675,14 @@ class ToiletRunner {
       obstaclesDodged: this.obstacles.getDodgedCount(),
       duration: this.survivalTime
     });
+
+    // Track game over
+    this.analyticsManager.trackGameOver(
+      Math.floor(this.score),
+      Math.floor(sessionDistance),
+      this.survivalTime,
+      this.obstacles.getDodgedCount()
+    );
 
     // Update highest score and check for skin unlocks
     this.statsManager.updateHighestScore(Math.floor(this.score));
@@ -729,6 +762,7 @@ class ToiletRunner {
     this.currentGameState = GameState.SHOP;
     this.ui.setGameState(this.currentGameState);
     this.updateShopDisplay();
+    this.analyticsManager.trackShopOpened(this.shopManager.getCoinBalance());
   }
 
   private updateShopDisplay(): void {
