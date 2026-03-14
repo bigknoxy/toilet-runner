@@ -378,46 +378,29 @@ export class UIManager {
   }
 
   public showSkinsScreen(): void {
-    this.hideAllScreens();
-    const skinScreen = document.getElementById('skin-screen');
-    if (skinScreen && this._overlay) {
-      this._overlay.classList.remove('hidden');
-      skinScreen.classList.remove('hidden');
-      this._overlay.classList.add('visible');
-      requestAnimationFrame(() => { skinScreen.classList.add('visible'); });
-    }
+    this._showScreen('skin-screen');
   }
 
   public showChallengesScreen(): void {
-    this.hideAllScreens();
-    const challengesScreen = document.getElementById('challenges-screen');
-    if (challengesScreen && this._overlay) {
-      this._overlay.classList.remove('hidden');
-      challengesScreen.classList.remove('hidden');
-      this._overlay.classList.add('visible');
-      requestAnimationFrame(() => { challengesScreen.classList.add('visible'); });
-    }
+    this._showScreen('challenges-screen');
   }
 
   public showStatsScreen(): void {
-    this.hideAllScreens();
-    const statsScreen = document.getElementById('stats-screen');
-    if (statsScreen && this._overlay) {
-      this._overlay.classList.remove('hidden');
-      statsScreen.classList.remove('hidden');
-      this._overlay.classList.add('visible');
-      requestAnimationFrame(() => { statsScreen.classList.add('visible'); });
-    }
+    this._showScreen('stats-screen');
   }
 
   public showShopScreen(): void {
+    this._showScreen('shop-screen');
+  }
+
+  private _showScreen(screenId: string): void {
     this.hideAllScreens();
-    const shopScreen = document.getElementById('shop-screen');
-    if (shopScreen && this._overlay) {
+    const screen = document.getElementById(screenId);
+    if (screen && this._overlay) {
       this._overlay.classList.remove('hidden');
-      shopScreen.classList.remove('hidden');
+      screen.classList.remove('hidden');
       this._overlay.classList.add('visible');
-      requestAnimationFrame(() => { shopScreen.classList.add('visible'); });
+      requestAnimationFrame(() => { screen.classList.add('visible'); });
     }
   }
 
@@ -436,55 +419,27 @@ export class UIManager {
   }
 
   public hideAllScreens(): void {
-    if (this._overlay) {
-      this._overlay.classList.add('hidden');
-      this._overlay.classList.remove('visible');
-    }
-    if (this._startScreen) {
-      this._startScreen.classList.add('hidden');
-      this._startScreen.classList.remove('visible');
-    }
-    if (this._pauseScreen) {
-      this._pauseScreen.classList.add('hidden');
-      this._pauseScreen.classList.remove('visible');
-    }
-    if (this._gameOverScreen) {
-      this._gameOverScreen.classList.add('hidden');
-      this._gameOverScreen.classList.remove('visible');
-    }
-    if (this._leaderboardScreen) {
-      this._leaderboardScreen.classList.add('hidden');
-      this._leaderboardScreen.classList.remove('visible');
-    }
+    const cachedElements = [
+      this._overlay,
+      this._startScreen,
+      this._pauseScreen,
+      this._gameOverScreen,
+      this._leaderboardScreen
+    ];
+    cachedElements.forEach(el => this._hideElement(el));
 
-    // Hide modal screens
-    const skinScreen = document.getElementById('skin-screen');
-    if (skinScreen) {
-      skinScreen.classList.add('hidden');
-      skinScreen.classList.remove('visible');
-    }
+    const screenIds = ['skin-screen', 'challenges-screen', 'stats-screen', 'shop-screen'];
+    screenIds.forEach(id => this._hideElement(document.getElementById(id)));
 
-    const challengesScreen = document.getElementById('challenges-screen');
-    if (challengesScreen) {
-      challengesScreen.classList.add('hidden');
-      challengesScreen.classList.remove('visible');
-    }
-
-    const statsScreen = document.getElementById('stats-screen');
-    if (statsScreen) {
-      statsScreen.classList.add('hidden');
-      statsScreen.classList.remove('visible');
-    }
-
-    const shopScreen = document.getElementById('shop-screen');
-    if (shopScreen) {
-      shopScreen.classList.add('hidden');
-      shopScreen.classList.remove('visible');
-    }
-
-    // Hide pause button on all non-gameplay screens
     if (this._pauseButtonContainer) {
       this._pauseButtonContainer.style.display = 'none';
+    }
+  }
+
+  private _hideElement(element: HTMLElement | null): void {
+    if (element) {
+      element.classList.add('hidden');
+      element.classList.remove('visible');
     }
   }
 

@@ -127,8 +127,7 @@ export class ShopManager {
     
     if (upgrade.currentLevel >= upgrade.maxLevel) return false;
     
-    const cost = upgrade.cost * (upgrade.currentLevel + 1);
-    return this.getCoinBalance() >= cost;
+    return this.getCoinBalance() >= this._calculateCost(upgrade);
   }
   
   public purchase(upgradeId: string): { success: boolean; message: string } {
@@ -142,7 +141,7 @@ export class ShopManager {
       return { success: false, message: 'Already maxed out!' };
     }
     
-    const cost = upgrade.cost * (upgrade.currentLevel + 1);
+    const cost = this._calculateCost(upgrade);
     const balance = this.getCoinBalance();
     
     if (balance < cost) {
@@ -192,5 +191,9 @@ export class ShopManager {
     this._state = { upgrades: {}, totalSpent: 0 };
     this._initializeUpgrades();
     this._saveState();
+  }
+
+  private _calculateCost(upgrade: ShopUpgrade): number {
+    return upgrade.cost * (upgrade.currentLevel + 1);
   }
 }
