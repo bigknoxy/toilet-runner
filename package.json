@@ -1,6 +1,6 @@
 {
   "name": "toilet-runner",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "3D endless runner with toilet paper roll avoiding poop obstacles",
   "type": "module",
   "scripts": {
