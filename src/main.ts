@@ -568,43 +568,38 @@ class ToiletRunner {
   }
 
   private handleCollision(hitPos: { x: number; y: number; z: number; lane: number }): void {
-    this.audioManager.playCollision();
-    this.cameraShake.shake(0.3, 0.4);
-
+    this._handleHitEffects(hitPos, { shakeIntensity: 0.3, shakeDuration: 0.4 });
     const obstaclePos = new THREE.Vector3(hitPos.x, hitPos.y, hitPos.z);
     for (let i = 0; i < 8; i++) {
       this.impactParticles.emitImpact(obstaclePos);
     }
-
-    this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
   }
 
   private handleShieldHit(hitPos: { x: number; y: number; z: number; lane: number }): void {
-    this.audioManager.playCollision();
-    this.cameraShake.shake(0.15, 0.2);
-    
+    this._handleHitEffects(hitPos, { shakeIntensity: 0.15, shakeDuration: 0.2 });
     const shieldPos = new THREE.Vector3(hitPos.x, hitPos.y, hitPos.z);
     this.sparkleParticles.emitSparkle(shieldPos);
-    this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
-    
     this.ui.showScorePopup('SHIELD!', true);
-    
     this.analyticsManager.trackShieldUsed(Math.floor(this.score));
   }
 
   private handleExtraLife(hitPos: { x: number; y: number; z: number; lane: number }): void {
-    this.audioManager.playCollision();
-    this.cameraShake.shake(0.2, 0.3);
-    
+    this._handleHitEffects(hitPos, { shakeIntensity: 0.2, shakeDuration: 0.3 });
     const revivePos = new THREE.Vector3(hitPos.x, hitPos.y, hitPos.z);
     for (let i = 0; i < 5; i++) {
       this.sparkleParticles.emitSparkle(revivePos);
     }
-    this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
-    
     this.ui.showScorePopup('REVIVED!', true);
-    
     this.analyticsManager.trackExtraLifeUsed(Math.floor(this.score));
+  }
+
+  private _handleHitEffects(
+    hitPos: { x: number; y: number; z: number; lane: number },
+    options: { shakeIntensity: number; shakeDuration: number }
+  ): void {
+    this.audioManager.playCollision();
+    this.cameraShake.shake(options.shakeIntensity, options.shakeDuration);
+    this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
   }
 
   private showDeathFlash(): void {
@@ -812,10 +807,7 @@ class ToiletRunner {
         this.runner.moveRight();
       }
       this.audioManager.playLaneChange();
-
-      if ('vibrate' in navigator && navigator.maxTouchPoints > 0) {
-        navigator.vibrate(15);
-      }
+      this.triggerHapticFeedback();
 
       const playerPos = this.runner.getPosition();
       playerPos.z += 0.5;
@@ -827,10 +819,7 @@ class ToiletRunner {
     if (this.currentGameState === GameState.PLAYING && !this._isDying) {
       this.runner.jump();
       this.audioManager.playLaneChange();
-
-      if ('vibrate' in navigator && navigator.maxTouchPoints > 0) {
-        navigator.vibrate(15);
-      }
+      this.triggerHapticFeedback();
     }
   }
 
@@ -847,6 +836,12 @@ class ToiletRunner {
   private handlePause(): void {
     this.togglePause();
     this.audioManager.playPause();
+  }
+
+  private triggerHapticFeedback(): void {
+    if ('vibrate' in navigator && navigator.maxTouchPoints > 0) {
+      navigator.vibrate(15);
+    }
   }
 
   private handleResume(): void {
