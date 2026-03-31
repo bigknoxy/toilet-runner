@@ -25,6 +25,7 @@ import { CharacterCustomization } from './game/CharacterCustomization';
 import { DailyChallengeSystem } from './game/DailyChallenges';
 import { ShopManager } from './game/ShopManager';
 import { StatsManager } from './core/StatsManager';
+import { PowerUpManager } from './game/PowerUpManager';
 import { AnalyticsManager } from './core/AnalyticsManager';
 import { CameraShake } from './game/CameraShake';
 import { ScoreAnimator } from './ui/ScoreAnimator';
@@ -32,6 +33,7 @@ import { HUD } from './ui/HUD';
 import { TrailRenderer } from './game/TrailRenderer';
 import { SpeedLines } from './game/visual/SpeedLines';
 import { InstallPrompt } from './ui/InstallPrompt';
+import { CoinManager } from './game/CoinManager';
 
 const BASE_SPEED = 10;
 const SPEED_INCREASE = 0.5;
@@ -74,12 +76,14 @@ class ToiletRunner {
   private characterCustomization!: CharacterCustomization;
   private dailyChallenges!: DailyChallengeSystem;
   private shopManager!: ShopManager;
+  private powerUpManager!: PowerUpManager;
   private statsManager!: StatsManager;
   private analyticsManager!: AnalyticsManager;
   private cameraShake!: CameraShake;
   private scoreAnimator!: ScoreAnimator;
   private hud!: HUD;
   private trailRenderer!: TrailRenderer;
+  private coinManager!: CoinManager;
   private currentGameState: GameState = GameState.MENU;
   private score = 0;
   private survivalTime = 0;
@@ -289,6 +293,10 @@ class ToiletRunner {
     this.shopManager = new ShopManager();
     this.shopManager.setDailyChallenges(this.dailyChallenges);
 
+    // Initialize power-up manager
+    this.powerUpManager = new PowerUpManager();
+    this.shopManager.setPowerUpManager(this.powerUpManager);
+
     // Initialize character customization
     this.characterCustomization = new CharacterCustomization();
     this.characterCustomization.setStatsManager(this.statsManager);
@@ -300,6 +308,11 @@ class ToiletRunner {
     );
     this.track = new TrackManager(scene);
     this.obstacles = new ObstacleManager(scene, this.track, this.performanceConfig.emojiFaces);
+    this.coinManager = new CoinManager(scene, this.track);
+    this.coinManager.setOnCoinCollected((coinValue: number) => {
+      this.dailyChallenges.updateCoinBalance(coinValue);
+      this.ui.showScorePopup(`+${coinValue} coins!`, true);
+    });
     this.collision = new CollisionSystem();
     this.audioManager = new AudioManager();
     this.environment = new EnvironmentManager(scene);
@@ -357,6 +370,27 @@ class ToiletRunner {
       }
     });
 
+    // Power-ups screen callback
+    this.ui.setOnPowerUpsCallback(this.showPowerUpsScreen.bind(this));
+
+    // Consumable purchase callback
+    this.ui.setOnPurchaseConsumableCallback((consumableId: string) => {
+      const result = this.shopManager.purchaseConsumable(consumableId);
+      if (result.success) {
+        this.updateShopDisplay();
+      }
+    });
+
+    // Power-up toggle callback
+    this.ui.setOnTogglePowerUpCallback((powerUpId: string) => {
+      if (this.powerUpManager.isActive(powerUpId)) {
+        this.powerUpManager.deactivateForRun(powerUpId);
+      } else {
+        this.powerUpManager.activateForRun(powerUpId);
+      }
+      this.updatePowerUpsDisplay();
+    });
+
     this.audioControls = new AudioControls(this.audioManager);
 
   }
@@ -407,11 +441,22 @@ class ToiletRunner {
       this.runner.update(delta);
       this.track.update(delta, gameSpeed);
       this.obstacles.update(delta, gameSpeed, this.score);
+      this.coinManager.update(delta, gameSpeed, this.score);
       this.environment.update(delta, gameSpeed);
+
+      // Check for coin collection
+      const playerPos = this.runner.getPosition();
+      const coinsCollected = this.coinManager.checkCollection(
+        playerPos.x, 
+        playerPos.z, 
+        playerPos.y
+      );
+      if (coinsCollected > 0) {
+        this.triggerCoinPickup(playerPos);
+      }
 
       // Check for successful dodges and trigger celebration effects
       const activeObstacles = this.obstacles.getActiveObstacles();
-      const playerPos = this.runner.getPosition();
 
       for (const obstacle of activeObstacles) {
         const obstacleId = `${obstacle.x}_${obstacle.z}`;
@@ -515,7 +560,8 @@ class ToiletRunner {
       }
 
       const prevScore = Math.floor(this.score);
-      this.score += SCORE_RATE * delta;
+      const scoreMultiplier = this.powerUpManager.getScoreMultiplier();
+      this.score += SCORE_RATE * delta * scoreMultiplier;
       const newScore = Math.floor(this.score);
 
       // Update challenge progress
@@ -626,14 +672,23 @@ class ToiletRunner {
     this.currentGameState = GameState.PLAYING;
     this.ui.setGameState(this.currentGameState);
     this.reset();
-    
+
     // Apply shop upgrades at start of run
-    this._shieldActive = this.shopManager.hasShield();
+    this._shieldActive = this.shopManager.hasShield() || this.powerUpManager.hasConsumableShield();
     this._extraLifeAvailable = this.shopManager.hasExtraLife();
-    
+
+    // Apply head start power-up
+    if (this.powerUpManager.hasHeadStart()) {
+      this.score = 100;
+      this.ui.updateScore(this.score);
+    }
+
+    // Consume activated power-ups
+    this.powerUpManager.consumeActivated();
+
     // Update HUD with active upgrades
     this.updateUpgradeHud();
-    
+
     // Track game start
     this.analyticsManager.trackGameStart({
       shield: this._shieldActive,
@@ -641,7 +696,7 @@ class ToiletRunner {
       coinMagnetLevel: this.shopManager.getUpgradeLevel('coinMagnet'),
       speedControlLevel: this.shopManager.getUpgradeLevel('speedControl')
     });
-    
+
     this.audioManager.playStartGame();
     this.statsManager.startSession();
   }
@@ -762,8 +817,22 @@ class ToiletRunner {
 
   private updateShopDisplay(): void {
     const upgrades = this.shopManager.getUpgrades();
+    const consumables = this.shopManager.getConsumables();
     const coinBalance = this.shopManager.getCoinBalance();
-    this.ui.updateShopDisplay(upgrades, coinBalance);
+    this.ui.updateShopDisplay(upgrades, consumables, coinBalance);
+  }
+
+  public showPowerUpsScreen(): void {
+    this.currentGameState = GameState.MENU;
+    this.ui.showPowerUpsScreen();
+    this.updatePowerUpsDisplay();
+  }
+
+  private updatePowerUpsDisplay(): void {
+    const powerUps = this.powerUpManager.getPowerUps();
+    const inventory = this.powerUpManager.getInventory();
+    const activePowerUps = this.powerUpManager.getActiveForRun();
+    this.ui.updatePowerUpsList(powerUps, inventory, activePowerUps);
   }
 
   public restartGame(): void {
@@ -774,6 +843,7 @@ class ToiletRunner {
     this.runner.reset();
     this.track.reset();
     this.obstacles.reset();
+    this.coinManager.reset();
     this.collision.reset();
     this.environment.reset();
     this.cameraManager.reset();
