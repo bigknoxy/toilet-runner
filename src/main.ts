@@ -819,11 +819,12 @@ class ToiletRunner {
     const upgrades = this.shopManager.getUpgrades();
     const consumables = this.shopManager.getConsumables();
     const coinBalance = this.shopManager.getCoinBalance();
-    this.ui.updateShopDisplay(upgrades, consumables, coinBalance);
+    const inventory = this.powerUpManager.getInventory();
+    this.ui.updateShopDisplay(upgrades, consumables, coinBalance, inventory);
   }
 
   public showPowerUpsScreen(): void {
-    this.currentGameState = GameState.MENU;
+    this.currentGameState = GameState.POWERUPS;
     this.ui.showPowerUpsScreen();
     this.updatePowerUpsDisplay();
   }

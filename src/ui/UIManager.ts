@@ -40,8 +40,11 @@ export class UIManager {
   private _onChallenges: (() => void) | null = null;
   private _onStats: (() => void) | null = null;
   private _onShop: (() => void) | null = null;
+  private _onPowerUps: (() => void) | null = null;
   private _onSelectSkin: ((skinId: string) => void) | null = null;
   private _onPurchaseUpgrade: ((upgradeId: string) => void) | null = null;
+  private _onPurchaseConsumable: ((consumableId: string) => void) | null = null;
+  private _onTogglePowerUp: ((powerUpId: string) => void) | null = null;
 
   // System references
   private dailyChallenges: DailyChallengeSystem | null = null;
@@ -213,6 +216,18 @@ export class UIManager {
       });
     }
 
+    // Power-ups button handler
+    const powerupsButton = document.getElementById('powerups-button');
+    if (powerupsButton) {
+      powerupsButton.addEventListener('click', (e: Event) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        if (this._onPowerUps) {
+          this._onPowerUps();
+        }
+      });
+    }
+
     // Home button handler (for game over screen)
     const homeButton = document.getElementById('home-button');
     if (homeButton) {
@@ -286,6 +301,44 @@ export class UIManager {
         }
       });
     }
+
+    const backFromPowerupsButton = document.getElementById('back-from-powerups-button');
+    if (backFromPowerupsButton) {
+      backFromPowerupsButton.addEventListener('click', (e: Event) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        if (this._onBackToMenu) {
+          this._onBackToMenu();
+        }
+      });
+    }
+
+    // Shop tab handling
+    const shopTabs = document.querySelectorAll('.shop-tab');
+    shopTabs.forEach(tab => {
+      tab.addEventListener('click', (e: Event) => {
+        e.stopPropagation();
+        const targetTab = e.currentTarget as HTMLElement;
+        const tabName = targetTab.dataset.tab;
+        
+        // Update tab states
+        shopTabs.forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        targetTab.classList.add('active');
+        targetTab.setAttribute('aria-selected', 'true');
+
+        // Update panel visibility
+        document.querySelectorAll('.shop-panel').forEach(panel => {
+          panel.classList.remove('active');
+        });
+        const activePanel = document.getElementById(`shop-${tabName}-panel`);
+        if (activePanel) {
+          activePanel.classList.add('active');
+        }
+      });
+    });
   }
 
   public updateScore(score: number): void {
@@ -393,6 +446,10 @@ export class UIManager {
     this._showScreen('shop-screen');
   }
 
+  public showPowerUpsScreen(): void {
+    this._showScreen('powerup-screen');
+  }
+
   private _showScreen(screenId: string): void {
     this.hideAllScreens();
     const screen = document.getElementById(screenId);
@@ -428,7 +485,7 @@ export class UIManager {
     ];
     cachedElements.forEach(el => this._hideElement(el));
 
-    const screenIds = ['skin-screen', 'challenges-screen', 'stats-screen', 'shop-screen'];
+    const screenIds = ['skin-screen', 'challenges-screen', 'stats-screen', 'shop-screen', 'powerup-screen'];
     screenIds.forEach(id => this._hideElement(document.getElementById(id)));
 
     if (this._pauseButtonContainer) {
@@ -587,6 +644,18 @@ export class UIManager {
 
   public setOnPurchaseUpgradeCallback(callback: (upgradeId: string) => void): void {
     this._onPurchaseUpgrade = callback;
+  }
+
+  public setOnPowerUpsCallback(callback: () => void): void {
+    this._onPowerUps = callback;
+  }
+
+  public setOnPurchaseConsumableCallback(callback: (consumableId: string) => void): void {
+    this._onPurchaseConsumable = callback;
+  }
+
+  public setOnTogglePowerUpCallback(callback: (powerUpId: string) => void): void {
+    this._onTogglePowerUp = callback;
   }
 
   public setDailyChallenges(dailyChallenges: DailyChallengeSystem): void {
@@ -939,6 +1008,10 @@ export class UIManager {
         this.showShopScreen();
         this.hidePauseButton();
         break;
+      case GameState.POWERUPS:
+        this.showPowerUpsScreen();
+        this.hidePauseButton();
+        break;
       default:
         break;
     }
@@ -1004,55 +1077,144 @@ export class UIManager {
     // Delegated to main ToiletRunner class via callback
   }
 
-  public updateShopDisplay(upgrades: any[], coinBalance: number): void {
-    const shopList = document.getElementById('shop-list');
-    if (!shopList) return;
-
+  public updateShopDisplay(upgrades: any[], consumables: any[], coinBalance: number, inventory?: Record<string, number>): void {
     const coinValueElement = document.getElementById('shop-coin-value');
     if (coinValueElement) {
       coinValueElement.textContent = coinBalance.toString();
     }
 
-    shopList.innerHTML = '';
+    // Update permanent upgrades list
+    const upgradesList = document.getElementById('shop-upgrades-list');
+    if (upgradesList) {
+      upgradesList.innerHTML = '';
 
-    upgrades.forEach((upgrade: any) => {
-      const isMaxed = upgrade.currentLevel >= upgrade.maxLevel;
-      const cost = upgrade.cost * (upgrade.currentLevel + 1);
-      const canAfford = coinBalance >= cost;
+      upgrades.forEach((upgrade: any) => {
+        const isMaxed = upgrade.currentLevel >= upgrade.maxLevel;
+        const cost = upgrade.cost * (upgrade.currentLevel + 1);
+        const canAfford = coinBalance >= cost;
+
+        const item = document.createElement('div');
+        item.className = `shop-item ${isMaxed ? 'maxed' : ''}`;
+        item.innerHTML = `
+          <div class="shop-icon">${upgrade.icon}</div>
+          <div class="shop-info">
+            <div class="shop-name">${upgrade.name}</div>
+            <div class="shop-description">${upgrade.description}</div>
+            <div class="shop-effect">${upgrade.effect(upgrade.currentLevel)}</div>
+          </div>
+          <div class="shop-action">
+            ${isMaxed 
+              ? '<div class="shop-purchased">MAXED</div>'
+              : `<button class="shop-buy-btn" data-upgrade-id="${upgrade.id}" ${!canAfford ? 'disabled' : ''}>Buy</button>
+                 <div class="shop-cost">${cost} coins</div>`
+            }
+            ${upgrade.maxLevel > 1 && !isMaxed 
+              ? `<div class="shop-level">Level ${upgrade.currentLevel}/${upgrade.maxLevel}</div>`
+              : ''
+            }
+          </div>
+        `;
+
+        const buyBtn = item.querySelector('.shop-buy-btn');
+        if (buyBtn && !isMaxed) {
+          buyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this._onPurchaseUpgrade) {
+              this._onPurchaseUpgrade(upgrade.id);
+            }
+          });
+        }
+
+        upgradesList.appendChild(item);
+      });
+    }
+
+    // Update consumables list
+    const consumablesList = document.getElementById('shop-consumables-list');
+    if (consumablesList) {
+      consumablesList.innerHTML = '';
+
+      consumables.forEach((consumable: any) => {
+        const canAfford = coinBalance >= consumable.cost;
+        const ownedQuantity = inventory?.[consumable.id] ?? 0;
+
+        const item = document.createElement('div');
+        item.className = 'shop-item consumable';
+        item.innerHTML = `
+          <div class="shop-icon">${consumable.icon}</div>
+          <div class="shop-info">
+            <div class="shop-name">${consumable.name}</div>
+            <div class="shop-description">${consumable.description}</div>
+            <div class="shop-effect">${consumable.effect}</div>
+          </div>
+          <div class="shop-action">
+            <button class="shop-buy-btn" data-consumable-id="${consumable.id}" ${!canAfford ? 'disabled' : ''}>Buy</button>
+            <div class="shop-cost">${consumable.cost} coins</div>
+            ${ownedQuantity > 0 ? `<div class="shop-owned">Owned: ${ownedQuantity}</div>` : ''}
+          </div>
+        `;
+
+        const buyBtn = item.querySelector('.shop-buy-btn');
+        if (buyBtn) {
+          buyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this._onPurchaseConsumable) {
+              this._onPurchaseConsumable(consumable.id);
+            }
+          });
+        }
+
+        consumablesList.appendChild(item);
+      });
+    }
+  }
+
+  public updatePowerUpsList(powerUps: any[], inventory: Record<string, number>, activePowerUps: string[]): void {
+    const powerUpList = document.getElementById('powerup-list');
+    if (!powerUpList) return;
+
+    const totalAvailable = Object.values(inventory).reduce((sum, qty) => sum + qty, 0);
+    const countElement = document.getElementById('powerup-inventory-count');
+    if (countElement) {
+      countElement.textContent = `${totalAvailable} available`;
+    }
+
+    powerUpList.innerHTML = '';
+
+    powerUps.forEach((powerUp: any) => {
+      const quantity = inventory[powerUp.id] || 0;
+      const isActive = activePowerUps.includes(powerUp.id);
 
       const item = document.createElement('div');
-      item.className = `shop-item ${isMaxed ? 'maxed' : ''}`;
+      item.className = `powerup-item ${quantity === 0 ? 'unavailable' : ''} ${isActive ? 'active' : ''}`;
       item.innerHTML = `
-        <div class="shop-icon">${upgrade.icon}</div>
-        <div class="shop-info">
-          <div class="shop-name">${upgrade.name}</div>
-          <div class="shop-description">${upgrade.description}</div>
-          <div class="shop-effect">${upgrade.effect(upgrade.currentLevel)}</div>
+        <div class="powerup-icon">${powerUp.icon}</div>
+        <div class="powerup-info">
+          <div class="powerup-name">${powerUp.name}</div>
+          <div class="powerup-description">${powerUp.description}</div>
         </div>
-        <div class="shop-action">
-          ${isMaxed 
-            ? '<div class="shop-purchased">MAXED</div>'
-            : `<button class="shop-buy-btn" data-upgrade-id="${upgrade.id}" ${!canAfford ? 'disabled' : ''}>Buy</button>
-               <div class="shop-cost">${cost} coins</div>`
-          }
-          ${upgrade.maxLevel > 1 && !isMaxed 
-            ? `<div class="shop-level">Level ${upgrade.currentLevel}/${upgrade.maxLevel}</div>`
-            : ''
+        <div class="powerup-action">
+          ${quantity > 0 
+            ? `<button class="powerup-toggle-btn ${isActive ? 'active' : ''}" data-powerup-id="${powerUp.id}">
+                ${isActive ? 'Active' : 'Activate'}
+               </button>
+               <div class="powerup-quantity">x${quantity}</div>`
+            : '<div class="powerup-none">None</div>'
           }
         </div>
       `;
 
-      const buyBtn = item.querySelector('.shop-buy-btn');
-      if (buyBtn && !isMaxed) {
-        buyBtn.addEventListener('click', (e) => {
+      const toggleBtn = item.querySelector('.powerup-toggle-btn');
+      if (toggleBtn && quantity > 0) {
+        toggleBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (this._onPurchaseUpgrade) {
-            this._onPurchaseUpgrade(upgrade.id);
+          if (this._onTogglePowerUp) {
+            this._onTogglePowerUp(powerUp.id);
           }
         });
       }
 
-      shopList.appendChild(item);
+      powerUpList.appendChild(item);
     });
   }
 
