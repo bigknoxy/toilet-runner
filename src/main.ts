@@ -54,6 +54,8 @@ const NEAR_MISS_MAX_DIST = 2.5;
 const SAME_LANE_THRESHOLD = 0.5;
 const NEAR_MISS_BONUS = 10;
 const CLOSE_PASS_BONUS = 5;
+const NEAR_MISS_COIN_REWARD = 5;
+const CLOSE_PASS_COIN_REWARD = 2;
 
 class ToiletRunner {
   private sceneManager!: SceneManager;
@@ -429,18 +431,21 @@ class ToiletRunner {
             const magnetBonus = this.shopManager.getCoinMagnetBonus();
             const nearMissScore = NEAR_MISS_BONUS + magnetBonus;
             this.score += nearMissScore;
-            this.ui.showScorePopup(`+${nearMissScore}`, true);
+            this.dailyChallenges.updateCoinBalance(NEAR_MISS_COIN_REWARD);
+            this.ui.showScorePopup(`+${nearMissScore} Score +${NEAR_MISS_COIN_REWARD} Coins!`, true);
             this.runner.triggerSuccessBounce();
           } else if (lateralDist <= SAME_LANE_THRESHOLD) {
             // Close pass - same lane, jumped over
             this.score += CLOSE_PASS_BONUS;
-            this.ui.showScorePopup('+5', false);
+            this.dailyChallenges.updateCoinBalance(CLOSE_PASS_COIN_REWARD);
+            this.ui.showScorePopup(`+${CLOSE_PASS_BONUS} Score +${CLOSE_PASS_COIN_REWARD} Coins!`, false);
           }
 
           // Trigger celebration effects for both near-miss and close-pass
           if (lateralDist <= NEAR_MISS_MAX_DIST) {
             const dodgePos = new THREE.Vector3(obstacle.x, playerPos.y, playerPos.z + 1);
             this.sparkleParticles.emitSparkle(dodgePos);
+            this.coinParticles.emitCoin(dodgePos);
             this.cameraShake.shake(0.03, 0.1);
           }
         }
