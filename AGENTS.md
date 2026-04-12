@@ -451,9 +451,43 @@ Use `typescript-gamelogic` agent for:
 
 ## Deployment Workflow
 
+### Pre-Release Verification (REQUIRED)
+
+**CRITICAL: NEVER release to production without verification.**
+
+Before every release, you MUST:
+
+1. **Build Verification:**
+   ```bash
+   bun run build
+   ```
+   - Must complete without errors
+   - Check for TypeScript errors
+   - Verify bundle size is reasonable
+
+2. **QA Testing (Required):**
+   - Use `/qa` skill to test production URL
+   - Use `/browse` skill for interactive verification
+   - Verify ALL existing functionality still works
+   - Verify new features/fixes specific to this release
+   - Check console for JavaScript errors
+   - Take screenshots as evidence
+
+3. **Production Verification:**
+   - After deployment, verify at https://bigknoxy.github.io/toilet-runner/
+   - Confirm new features work in production
+   - Confirm no regressions in existing features
+
+### Release Steps
+
 1. Run `bun run build` to create `dist/` folder
-2. Run `bun run deploy` to deploy to GitHub Pages (via gh-pages)
-3. Or push to `main` branch for automatic GitHub Actions deployment
+2. Run QA verification using `/qa` and `/browse` skills
+3. Fix any issues found
+4. Run `bun run deploy` to deploy to GitHub Pages (via gh-pages)
+5. Verify production deployment works
+6. Create GitHub release with changelog
+
+**Note:** Push to `main` branch triggers automatic GitHub Actions deployment. Always verify after auto-deployment.
 
 ## Performance Targets
 
