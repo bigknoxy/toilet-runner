@@ -81,6 +81,30 @@ All data in `localStorage` under `toiletRunner_unifiedData` (version 2). Stores 
 
 After completing any fix or feature change, always start the dev server (`bun run dev`) so the user can playtest immediately.
 
+## Skill Routing
+
+When the user's request matches an available skill, ALWAYS invoke it using the Skill tool as your FIRST action. Do NOT answer directly, do NOT use other tools first. The skill has specialized workflows that produce better results than ad-hoc answers.
+
+Key routing rules:
+- Ship, deploy, push, create PR → invoke /ship
+- QA, test the site, find bugs → invoke /qa
+- Code review, check my diff → invoke /review
+- Release verification (before deploy) → invoke /release-verification (see .opencode/skills/release-verification/)
+- Bugs, errors, "why is this broken" → invoke /investigate
+
+### Pre-Release Verification (CRITICAL)
+
+**NEVER release to production without verification using /qa and /browse skills.**
+
+Before every release:
+1. Run /qa on production URL (https://bigknoxy.github.io/toilet-runner/)
+2. Run /browse to verify interactive functionality
+3. Verify existing features still work (no regressions)
+4. Verify new features work as expected
+5. Only proceed if verification passes
+
+See AGENTS.md "Deployment Workflow" section for full details.
+
 ## Common Pitfalls
 
 - Vite `base: './'` is required for GitHub Pages asset paths — do not change it
