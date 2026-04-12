@@ -1,4 +1,4 @@
-import{V as e}from"./index--9vlab3v.js";const t={name:"FXAAShader",uniforms:{tDiffuse:{value:null},resolution:{value:new e(1/1024,1/512)}},vertexShader:`
+import{V as e}from"./index-BVShwRXr.js";const t={name:"FXAAShader",uniforms:{tDiffuse:{value:null},resolution:{value:new e(1/1024,1/512)}},vertexShader:`
 
 		varying vec2 vUv;
 

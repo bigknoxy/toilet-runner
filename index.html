@@ -28,8 +28,8 @@
       }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index--9vlab3v.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-BHm3pCMz.css">
+  <script type="module" crossorigin src="./assets/index-BVShwRXr.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BJ0ZioYV.css">
 </head>
 
 <body>
@@ -51,6 +51,24 @@
   </div>
 
   <div id="score-display" role="status" aria-live="polite" aria-label="Score">0</div>
+
+  <!-- Upgrade Indicators HUD -->
+  <div id="upgrade-hud" class="upgrade-hud hidden">
+    <div class="upgrade-indicator" id="shield-indicator" data-upgrade="shield" title="Shield Active">
+      <span class="upgrade-icon">🛡️</span>
+    </div>
+    <div class="upgrade-indicator" id="extra-life-indicator" data-upgrade="extraLife" title="Extra Life Ready">
+      <span class="upgrade-icon">💫</span>
+    </div>
+    <div class="upgrade-indicator" id="coin-magnet-indicator" data-upgrade="coinMagnet" title="Coin Magnet">
+      <span class="upgrade-icon">🧲</span>
+      <span class="upgrade-level" id="magnet-level">0</span>
+    </div>
+    <div class="upgrade-indicator" id="speed-control-indicator" data-upgrade="speedControl" title="Speed Control">
+      <span class="upgrade-icon">⏱️</span>
+      <span class="upgrade-level" id="speed-level">0</span>
+    </div>
+  </div>
 
   <!-- Pause Button - Hidden by default, shown during gameplay -->
   <div id="pause-button" style="display: none;">
@@ -82,6 +100,10 @@
           </button>
         </div>
         <div class="start-nav-buttons">
+          <button id="shop-button" class="btn btn-nav menu-item" aria-label="Shop">
+            <span class="btn-icon" aria-hidden="true">&#128722;</span>
+            <span class="btn-text">Shop</span>
+          </button>
           <button id="skins-button" class="btn btn-nav menu-item" aria-label="Character Skins">
             <span class="btn-icon" aria-hidden="true">&#127912;</span>
             <span class="btn-text">Skins</span>
@@ -95,6 +117,7 @@
             <span class="btn-text">Stats</span>
           </button>
         </div>
+        <div id="app-version" class="app-version"></div>
       </div>
     </div>
 
@@ -119,6 +142,15 @@
       </div>
       <div class="modal-body game-over-body">
         <p id="final-score">Score: 0</p>
+        <p id="game-over-message" class="game-over-message"></p>
+        <div id="name-entry-section" class="name-entry-section" style="display: none;">
+          <p class="name-entry-prompt" id="name-entry-label">🏆 You made it to the Top 10! Enter your name:</p>
+          <input type="text" id="player-name-input" class="player-name-input" 
+                 placeholder="Your name" maxlength="20" autocomplete="off"
+                 autocorrect="off" autocapitalize="off" spellcheck="false"
+                 inputmode="text" aria-labelledby="name-entry-label">
+          <button id="submit-name-button" class="btn btn-primary">Submit Score</button>
+        </div>
       </div>
       <div class="modal-footer game-over-footer">
         <button id="restart-button" class="btn btn-primary menu-item">&#128260; Play Again</button>
@@ -223,6 +255,25 @@
       </div>
       <div class="modal-footer stats-footer">
         <button id="back-from-stats-button" class="btn btn-secondary menu-item">&larr; Back</button>
+      </div>
+    </div>
+
+    <!-- Shop Screen -->
+    <div class="modal modal-content" id="shop-screen" style="display: none;" role="dialog" aria-label="Shop">
+      <div class="modal-header">
+        <h1>&#128722; Power-Up Shop</h1>
+        <div class="shop-header-info">
+          <div class="coin-balance" id="shop-coin-balance">
+            <span class="coin-icon" aria-hidden="true">&#129689;</span>
+            <span class="coin-value" id="shop-coin-value">0</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-body shop-body">
+        <div id="shop-list" class="shop-list" role="list" aria-label="Upgrades for purchase"></div>
+      </div>
+      <div class="modal-footer shop-footer">
+        <button id="back-from-shop-button" class="btn btn-secondary menu-item">&larr; Back</button>
       </div>
     </div>
   </div>
