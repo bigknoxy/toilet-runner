@@ -669,8 +669,9 @@
   font-weight: 600;
   font-size: 16px;
   color: var(--text-primary);
-  flex: 1;
-  margin: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .leaderboard-date {
@@ -685,11 +686,11 @@
   padding: 16px;
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
   border-radius: var(--radius-md);
-  border: 2px solid var(--accent-primary);
-  animation: pulse-glow 2s ease-in-out infinite;
+  border: 2px solid var(--accent);
+  animation: border-pulse-glow 2s ease-in-out infinite;
 }
 
-@keyframes pulse-glow {
+@keyframes border-pulse-glow {
   0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
   50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
 }
@@ -697,7 +698,7 @@
 .name-entry-prompt {
   font-weight: 600;
   font-size: 16px;
-  color: var(--accent-primary);
+  color: var(--accent);
   margin-bottom: 12px;
   text-align: center;
 }
@@ -708,7 +709,7 @@
   font-size: 16px;
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
+  background: rgba(30, 30, 50, 0.8);
   color: var(--text-primary);
   margin-bottom: 12px;
   box-sizing: border-box;
@@ -716,7 +717,7 @@
 
 .player-name-input:focus {
   outline: none;
-  border-color: var(--accent-primary);
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
 }
 

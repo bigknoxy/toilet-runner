@@ -134,7 +134,7 @@ export class UIManager {
         }
       });
 
-      this._playerNameInput.addEventListener('keypress', (e) => {
+      this._playerNameInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && this._onSubmitName && this._playerNameInput) {
           const name = this._playerNameInput.value.trim() || 'Anonymous';
           this._onSubmitName(name);
@@ -928,13 +928,28 @@ export class UIManager {
       scores.forEach((entry, index) => {
         const li = document.createElement('li');
         li.className = 'leaderboard-item';
-        const name = entry.name || 'Anonymous';
-        li.innerHTML = `
-          <span class="leaderboard-rank">#${index + 1}</span>
-          <span class="leaderboard-name">${name}</span>
-          <span class="leaderboard-score">${Math.floor(entry.score)}</span>
-          <span class="leaderboard-date">${entry.date}</span>
-        `;
+
+        const rankSpan = document.createElement('span');
+        rankSpan.className = 'leaderboard-rank';
+        rankSpan.textContent = `#${index + 1}`;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'leaderboard-name';
+        nameSpan.textContent = entry.name || 'Anonymous';
+
+        const scoreSpan = document.createElement('span');
+        scoreSpan.className = 'leaderboard-score';
+        scoreSpan.textContent = Math.floor(entry.score).toString();
+
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'leaderboard-date';
+        dateSpan.textContent = entry.date;
+
+        li.appendChild(rankSpan);
+        li.appendChild(nameSpan);
+        li.appendChild(scoreSpan);
+        li.appendChild(dateSpan);
+
         this._leaderboardListFull?.appendChild(li);
       });
     }

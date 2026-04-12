@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 export interface LeaderboardEntry {
   score: number;
   date: string;
@@ -9,17 +7,33 @@ export interface LeaderboardEntry {
 export class LeaderboardManager {
   private static STORAGE_KEY = 'toilet_runner_leaderboard';
   private static MAX_ENTRIES = 10;
+  private static MAX_NAME_LENGTH = 20;
   private _entries: LeaderboardEntry[] = [];
 
   constructor() {
     this.loadFromStorage();
   }
 
+  private sanitizeName(name: string): string {
+    // Remove HTML tags, control characters, and trim
+    return name
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+      .trim()
+      .slice(0, LeaderboardManager.MAX_NAME_LENGTH) || 'Anonymous';
+  }
+
   private loadFromStorage(): void {
     try {
       const stored = localStorage.getItem(LeaderboardManager.STORAGE_KEY);
       if (stored) {
-        this._entries = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Migrate entries without name field
+        this._entries = parsed.map((entry: Partial<LeaderboardEntry>) => ({
+          score: entry.score ?? 0,
+          date: entry.date ?? '',
+          name: entry.name || 'Anonymous'
+        }));
       }
     } catch (error) {
       console.error('Failed to load leaderboard from storage:', error);
@@ -36,8 +50,9 @@ export class LeaderboardManager {
   }
 
   public addScore(score: number, name: string = 'Anonymous'): void {
+    const sanitizedName = this.sanitizeName(name);
     const date = new Date().toLocaleDateString();
-    const entry: LeaderboardEntry = { score, date, name };
+    const entry: LeaderboardEntry = { score, date, name: sanitizedName };
 
     this._entries.push(entry);
     this._entries.sort((a, b) => b.score - a.score);

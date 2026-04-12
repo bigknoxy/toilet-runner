@@ -85,6 +85,7 @@ class ToiletRunner {
   private currentGameState: GameState = GameState.MENU;
   private score = 0;
   private survivalTime = 0;
+  private _pendingHighScore: { score: number; submitted: boolean } = { score: 0, submitted: false };
   private lastDodgedCount = 0;
   private currentStreak = 0;
   private challengesNeedUpdate = false;
@@ -678,11 +679,16 @@ class ToiletRunner {
     // Check if this is a high score BEFORE adding it
     const isHighScore = this.leaderboard.isHighScore(this.score);
 
+    // Reset pending high score tracker
+    this._pendingHighScore = { score: 0, submitted: false };
+
     // If not a high score, add it immediately with default name
     if (!isHighScore) {
       this.leaderboard.addScore(this.score, 'Anonymous');
+    } else {
+      // Track pending high score - will be submitted after name entry
+      this._pendingHighScore = { score: this.score, submitted: false };
     }
-    // If high score, we'll add it after player enters their name
 
     const sessionDistance = this.score;
     this.statsManager.endSession({
@@ -728,7 +734,10 @@ class ToiletRunner {
 
   private handleNameSubmit(name: string): void {
     // Add score with player name
-    this.leaderboard.addScore(this.score, name);
+    this.leaderboard.addScore(this._pendingHighScore.score, name);
+
+    // Mark as submitted
+    this._pendingHighScore.submitted = true;
 
     // Update leaderboard display
     const topScores = this.leaderboard.getTopScores();
@@ -797,6 +806,14 @@ class ToiletRunner {
   }
 
   public restartGame(): void {
+    // Auto-submit pending high score if player restarts without entering name
+    if (this._pendingHighScore.score > 0 && !this._pendingHighScore.submitted) {
+      this.leaderboard.addScore(this._pendingHighScore.score, 'Anonymous');
+      this._pendingHighScore = { score: 0, submitted: false };
+      // Update leaderboard display
+      const topScores = this.leaderboard.getTopScores();
+      this.ui.updateLeaderboardFull(topScores);
+    }
     this.startGame();
   }
 
