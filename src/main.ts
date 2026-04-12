@@ -103,6 +103,7 @@ class ToiletRunner {
   private coinParticles!: ParticleSystem;
   private speedLines!: SpeedLines;
   private dustEmissionTimer = 0;
+  private _dodgePosition = new THREE.Vector3(); // Reusable vector for particle positions
 
   constructor() {
     this.initialize();
@@ -430,22 +431,25 @@ class ToiletRunner {
             // Near miss - adjacent lane dodge (with coin magnet bonus)
             const magnetBonus = this.shopManager.getCoinMagnetBonus();
             const nearMissScore = NEAR_MISS_BONUS + magnetBonus;
+            const nearMissCoins = NEAR_MISS_COIN_REWARD + Math.floor(magnetBonus / 2);
             this.score += nearMissScore;
-            this.dailyChallenges.updateCoinBalance(NEAR_MISS_COIN_REWARD);
-            this.ui.showScorePopup(`+${nearMissScore} Score +${NEAR_MISS_COIN_REWARD} Coins!`, true);
+            this.dailyChallenges.updateCoinBalance(nearMissCoins);
+            this.ui.showScorePopup(`+${nearMissScore} Score +${nearMissCoins} Coins!`, true);
             this.runner.triggerSuccessBounce();
           } else if (lateralDist <= SAME_LANE_THRESHOLD) {
             // Close pass - same lane, jumped over
+            const magnetBonus = this.shopManager.getCoinMagnetBonus();
+            const closePassCoins = CLOSE_PASS_COIN_REWARD + Math.floor(magnetBonus / 5);
             this.score += CLOSE_PASS_BONUS;
-            this.dailyChallenges.updateCoinBalance(CLOSE_PASS_COIN_REWARD);
-            this.ui.showScorePopup(`+${CLOSE_PASS_BONUS} Score +${CLOSE_PASS_COIN_REWARD} Coins!`, false);
+            this.dailyChallenges.updateCoinBalance(closePassCoins);
+            this.ui.showScorePopup(`+${CLOSE_PASS_BONUS} Score +${closePassCoins} Coins!`, false);
           }
 
           // Trigger celebration effects for both near-miss and close-pass
           if (lateralDist <= NEAR_MISS_MAX_DIST) {
-            const dodgePos = new THREE.Vector3(obstacle.x, playerPos.y, playerPos.z + 1);
-            this.sparkleParticles.emitSparkle(dodgePos);
-            this.coinParticles.emitCoin(dodgePos);
+            this._dodgePosition.set(obstacle.x, playerPos.y, playerPos.z + 1);
+            this.sparkleParticles.emitSparkle(this._dodgePosition);
+            this.coinParticles.emitCoin(this._dodgePosition);
             this.cameraShake.shake(0.03, 0.1);
           }
         }

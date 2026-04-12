@@ -1,0 +1,21 @@
+- generic [active] [ref=e1]:
+  - button "Toggle Sound" [ref=e14]: 🔊
+  - dialog [ref=e15]:
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - generic "Toilet Runner" [ref=e18]: 🚽 Toilet Runner
+        - generic [ref=e19]: Dodge the poop!
+        - button "Start Game" [ref=e21] [cursor=pointer]:
+          - generic [ref=e22]: ▶️
+          - generic [ref=e23]: PLAY
+        - generic [ref=e24]:
+          - button "Character Skins" [ref=e25] [cursor=pointer]:
+            - generic [ref=e26]: 🎨
+            - generic [ref=e27]: Skins
+          - button "Daily Challenges" [ref=e28] [cursor=pointer]:
+            - generic [ref=e29]: 📅
+            - generic [ref=e30]: Challenges
+          - button "Statistics" [ref=e31] [cursor=pointer]:
+            - generic [ref=e32]: 📊
+            - generic [ref=e33]: Stats
+        - generic [ref=e34]: v1.1.0

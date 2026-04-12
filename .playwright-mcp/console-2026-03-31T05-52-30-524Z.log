@@ -1,0 +1,8 @@
+[    6157ms] [LOG] Service Worker registered: http://localhost:5173/ @ http://localhost:5173/src/main.ts:746
+[    6158ms] [WARNING] [.WebGL-0x1a5401204000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://localhost:5173/:0
+[   13908ms] [WARNING] [.WebGL-0x1a5401204000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://localhost:5173/:0
+[   14413ms] [WARNING] [.WebGL-0x1a5401204000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://localhost:5173/:0
+[   14911ms] [WARNING] [.WebGL-0x1a5401204000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat) @ http://localhost:5173/:0
+[  732963ms] [LOG] Service Worker registered: http://localhost:5173/ @ http://localhost:5173/src/main.ts?t=1774937081008:746
+[  858083ms] [LOG] Service Worker registered: http://localhost:5173/ @ http://localhost:5173/src/main.ts?t=1774937206918:746
+[  891236ms] [LOG] Service Worker registered: http://localhost:5173/ @ http://localhost:5173/src/main.ts?t=1774937239633:746
