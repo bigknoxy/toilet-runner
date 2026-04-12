@@ -18,6 +18,7 @@ export class DailyChallengeSystem {
   private _lastGenerated: string = ''; // Date string for last generation
   private _coinBalance: number = 0;
   private _statsManager: StatsManager | null = null;
+  private _savePending = false; // For batching localStorage writes
 
   public setStatsManager(statsManager: StatsManager): void {
     this._statsManager = statsManager;
@@ -220,7 +221,14 @@ export class DailyChallengeSystem {
 
   public updateCoinBalance(amount: number): void {
     this._coinBalance += amount;
-    localStorage.setItem('toiletRunner_coins', this._coinBalance.toString());
+    // Batch localStorage writes to avoid blocking the main thread during gameplay
+    if (!this._savePending) {
+      this._savePending = true;
+      requestAnimationFrame(() => {
+        localStorage.setItem('toiletRunner_coins', this._coinBalance.toString());
+        this._savePending = false;
+      });
+    }
   }
 
   public getCoinBalance(): number {

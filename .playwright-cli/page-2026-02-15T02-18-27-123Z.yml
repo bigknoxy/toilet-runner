@@ -1,0 +1,6 @@
+- generic [active] [ref=e1]:
+  - status "Score": "3"
+  - button "Pause Game" [ref=e36] [cursor=pointer]:
+    - generic [ref=e37]: ⏸
+    - generic [ref=e38]: Pause
+  - button "Toggle Sound" [ref=e14]: 🔊
