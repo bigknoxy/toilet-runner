@@ -360,6 +360,11 @@ class ToiletRunner {
       }
     });
 
+    // Name submit callback for high scores
+    this.ui.setOnSubmitNameCallback((name: string) => {
+      this.handleNameSubmit(name);
+    });
+
     this.audioControls = new AudioControls(this.audioManager);
 
   }
@@ -670,7 +675,14 @@ class ToiletRunner {
     this.audioManager.playGameOver();
     this.cameraShake.shake(0.25, 0.5);
 
-    this.leaderboard.addScore(this.score);
+    // Check if this is a high score BEFORE adding it
+    const isHighScore = this.leaderboard.isHighScore(this.score);
+
+    // If not a high score, add it immediately with default name
+    if (!isHighScore) {
+      this.leaderboard.addScore(this.score, 'Anonymous');
+    }
+    // If high score, we'll add it after player enters their name
 
     const sessionDistance = this.score;
     this.statsManager.endSession({
@@ -711,7 +723,16 @@ class ToiletRunner {
     const highScore = this.statsManager.getHighestScore();
     const isNewBest = Math.floor(this.score) >= highScore && this.score > 0;
     const message = this.getEncouragingMessage(this.score, highScore, this.survivalTime);
-    this.ui.showGameOverScreen(this.score, message, isNewBest);
+    this.ui.showGameOverScreen(this.score, message, isNewBest, isHighScore);
+  }
+
+  private handleNameSubmit(name: string): void {
+    // Add score with player name
+    this.leaderboard.addScore(this.score, name);
+
+    // Update leaderboard display
+    const topScores = this.leaderboard.getTopScores();
+    this.ui.updateLeaderboardFull(topScores);
   }
 
   private getEncouragingMessage(score: number, highScore: number, time: number): string {

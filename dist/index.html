@@ -28,8 +28,8 @@
       }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-BO72l8KO.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-BBLCIlK5.css">
+  <script type="module" crossorigin src="./assets/index-C13e0-uG.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-Z0-_KYKE.css">
 </head>
 
 <body>
@@ -142,6 +142,12 @@
       </div>
       <div class="modal-body game-over-body">
         <p id="final-score">Score: 0</p>
+        <p id="game-over-message" class="game-over-message"></p>
+        <div id="name-entry-section" class="name-entry-section" style="display: none;">
+          <p class="name-entry-prompt">🏆 You made it to the Top 10! Enter your name:</p>
+          <input type="text" id="player-name-input" class="player-name-input" placeholder="Your name" maxlength="20" autocomplete="off">
+          <button id="submit-name-button" class="btn btn-primary">Submit Score</button>
+        </div>
       </div>
       <div class="modal-footer game-over-footer">
         <button id="restart-button" class="btn btn-primary menu-item">&#128260; Play Again</button>

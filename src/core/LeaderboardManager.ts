@@ -3,6 +3,7 @@ import * as THREE from 'three';
 export interface LeaderboardEntry {
   score: number;
   date: string;
+  name: string;
 }
 
 export class LeaderboardManager {
@@ -34,9 +35,9 @@ export class LeaderboardManager {
     }
   }
 
-  public addScore(score: number): void {
+  public addScore(score: number, name: string = 'Anonymous'): void {
     const date = new Date().toLocaleDateString();
-    const entry: LeaderboardEntry = { score, date };
+    const entry: LeaderboardEntry = { score, date, name };
 
     this._entries.push(entry);
     this._entries.sort((a, b) => b.score - a.score);
