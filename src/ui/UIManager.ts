@@ -18,6 +18,12 @@ export class UIManager {
   private _viewLeaderboardButton: HTMLElement | null = null;
   private _backToGameOverButton: HTMLElement | null = null;
 
+  // Name entry elements
+  private _nameEntrySection: HTMLElement | null = null;
+  private _playerNameInput: HTMLInputElement | null = null;
+  private _submitNameButton: HTMLElement | null = null;
+  private _gameOverMessage: HTMLElement | null = null;
+
   // Intro sequence elements
   private _introOverlay: HTMLElement | null = null;
   private _introProgressBar: HTMLElement | null = null;
@@ -42,6 +48,7 @@ export class UIManager {
   private _onShop: (() => void) | null = null;
   private _onSelectSkin: ((skinId: string) => void) | null = null;
   private _onPurchaseUpgrade: ((upgradeId: string) => void) | null = null;
+  private _onSubmitName: ((name: string) => void) | null = null;
 
   // System references
   private dailyChallenges: DailyChallengeSystem | null = null;
@@ -67,6 +74,12 @@ export class UIManager {
     this._leaderboardListFull = document.getElementById('leaderboard-list-full');
     this._viewLeaderboardButton = document.getElementById('view-leaderboard-button');
     this._backToGameOverButton = document.getElementById('back-to-game-over-button');
+
+    // Name entry elements
+    this._nameEntrySection = document.getElementById('name-entry-section');
+    this._playerNameInput = document.getElementById('player-name-input') as HTMLInputElement;
+    this._submitNameButton = document.getElementById('submit-name-button');
+    this._gameOverMessage = document.getElementById('game-over-message');
 
     // Intro sequence elements
     this._introOverlay = document.getElementById('intro-overlay');
@@ -106,6 +119,28 @@ export class UIManager {
       this._resumeButton.addEventListener('click', () => {
         if (this._onResume) {
           this._onResume();
+        }
+      });
+    }
+
+    if (this._submitNameButton && this._playerNameInput) {
+      this._submitNameButton.addEventListener('click', () => {
+        if (this._onSubmitName && this._playerNameInput) {
+          const name = this._playerNameInput.value.trim() || 'Anonymous';
+          this._onSubmitName(name);
+          if (this._nameEntrySection) {
+            this._nameEntrySection.style.display = 'none';
+          }
+        }
+      });
+
+      this._playerNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && this._onSubmitName && this._playerNameInput) {
+          const name = this._playerNameInput.value.trim() || 'Anonymous';
+          this._onSubmitName(name);
+          if (this._nameEntrySection) {
+            this._nameEntrySection.style.display = 'none';
+          }
         }
       });
     }
@@ -317,7 +352,7 @@ export class UIManager {
 
   private _countUpRaf: number = 0;
 
-  public showGameOverScreen(finalScore: number, message?: string, isNewBest?: boolean): void {
+  public showGameOverScreen(finalScore: number, message?: string, isNewBest?: boolean, isHighScore?: boolean): void {
     this.hideAllScreens();
     if (this._gameOverScreen && this._finalScore && this._overlay) {
       this._overlay.classList.remove('hidden');
@@ -351,15 +386,20 @@ export class UIManager {
       this._countUpRaf = requestAnimationFrame(animate);
 
       // Show encouraging message
-      const messageEl = this._gameOverScreen.querySelector('.game-over-message');
-      if (messageEl) {
-        messageEl.textContent = message || '';
-        messageEl.classList.toggle('new-best', isNewBest === true);
-      } else if (message) {
-        const msgDiv = document.createElement('p');
-        msgDiv.className = `game-over-message${isNewBest ? ' new-best' : ''}`;
-        msgDiv.textContent = message;
-        this._finalScore.insertAdjacentElement('afterend', msgDiv);
+      if (this._gameOverMessage) {
+        this._gameOverMessage.textContent = message || '';
+        this._gameOverMessage.classList.toggle('new-best', isNewBest === true);
+      }
+
+      // Show name entry section if it's a high score
+      if (this._nameEntrySection && this._playerNameInput) {
+        if (isHighScore) {
+          this._nameEntrySection.style.display = 'block';
+          this._playerNameInput.value = '';
+          this._playerNameInput.focus();
+        } else {
+          this._nameEntrySection.style.display = 'none';
+        }
       }
 
       this._gameOverScreen.classList.add('visible');
@@ -587,6 +627,10 @@ export class UIManager {
 
   public setOnPurchaseUpgradeCallback(callback: (upgradeId: string) => void): void {
     this._onPurchaseUpgrade = callback;
+  }
+
+  public setOnSubmitNameCallback(callback: (name: string) => void): void {
+    this._onSubmitName = callback;
   }
 
   public setDailyChallenges(dailyChallenges: DailyChallengeSystem): void {
@@ -878,17 +922,34 @@ export class UIManager {
     }
   }
 
-  public updateLeaderboardFull(scores: Array<{ score: number; date: string }>): void {
+  public updateLeaderboardFull(scores: Array<{ score: number; date: string; name?: string }>): void {
     if (this._leaderboardListFull) {
       this._leaderboardListFull.innerHTML = '';
       scores.forEach((entry, index) => {
         const li = document.createElement('li');
         li.className = 'leaderboard-item';
-        li.innerHTML = `
-          <span class="leaderboard-rank">#${index + 1}</span>
-          <span class="leaderboard-score">${Math.floor(entry.score)}</span>
-          <span class="leaderboard-date">${entry.date}</span>
-        `;
+
+        const rankSpan = document.createElement('span');
+        rankSpan.className = 'leaderboard-rank';
+        rankSpan.textContent = `#${index + 1}`;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'leaderboard-name';
+        nameSpan.textContent = entry.name || 'Anonymous';
+
+        const scoreSpan = document.createElement('span');
+        scoreSpan.className = 'leaderboard-score';
+        scoreSpan.textContent = Math.floor(entry.score).toString();
+
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'leaderboard-date';
+        dateSpan.textContent = entry.date;
+
+        li.appendChild(rankSpan);
+        li.appendChild(nameSpan);
+        li.appendChild(scoreSpan);
+        li.appendChild(dateSpan);
+
         this._leaderboardListFull?.appendChild(li);
       });
     }
