@@ -1,7 +1,12 @@
 :root {
   /* Colors */
-  --primary: #87CEEB;
-  --primary-dark: #5DADE2;
+  /* Darkened for WCAG AA. The previous #87CEEB / #5DADE2 pair measured 1.74:1
+     and 2.46:1 against the white button text, well under the 4.5:1 minimum.
+     These measure 5.48:1 and 6.83:1. --primary-light keeps the original hue
+     available for decorative fills that carry no text. */
+  --primary: #1F6F9F;
+  --primary-dark: #17608A;
+  --primary-light: #87CEEB;
   --accent: #FFD700;
   --accent-hover: #FFC107;
   --text-primary: #333333;

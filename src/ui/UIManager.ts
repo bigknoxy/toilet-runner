@@ -145,12 +145,18 @@ export class UIManager {
       });
     }
 
-    // Global keyboard shortcuts based on current state
+    // Global keyboard shortcuts based on current state.
+    // Escape while PAUSED is deliberately absent: InputManager owns that key,
+    // and handling it here as well made the two calls cancel each other out.
     document.addEventListener('keydown', (e) => {
+      // Never steal keys from the high-score name field — a space there used to
+      // restart the run, making two-word names impossible.
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
+
       if (e.key === 'Escape') {
-        if (this.currentGameState === GameState.PAUSED) {
-          if (this._onResume) this._onResume();
-        } else if (this.currentGameState === GameState.GAMEOVER) {
+        if (this.currentGameState === GameState.GAMEOVER) {
           if (this._onRestart) this._onRestart();
         } else if (this.currentGameState === GameState.LEADERBOARD) {
           if (this._onBackToGameOver) this._onBackToGameOver();
@@ -353,6 +359,7 @@ export class UIManager {
   private _countUpRaf: number = 0;
 
   public showGameOverScreen(finalScore: number, message?: string, isNewBest?: boolean, isHighScore?: boolean): void {
+    this.announce(`Game over. Score ${Math.floor(finalScore)}.${message ? ' ' + message : ''}`);
     this.hideAllScreens();
     if (this._gameOverScreen && this._finalScore && this._overlay) {
       this._overlay.classList.remove('hidden');
@@ -1039,7 +1046,20 @@ export class UIManager {
     }, 3000);
   }
 
+  /**
+   * Announce to screen readers. The score HUD updates every frame and cannot be
+   * a live region, so anything worth hearing is routed through here instead.
+   */
+  public announce(message: string): void {
+    const region = document.getElementById('sr-announcer');
+    if (!region) return;
+    // Reassigning identical text does not re-announce, so clear first.
+    region.textContent = '';
+    requestAnimationFrame(() => { region.textContent = message; });
+  }
+
   public showMilestonePopup(message: string): void {
+    this.announce(message);
     const popup = document.createElement('div');
     popup.className = 'milestone-popup';
     popup.textContent = message;
