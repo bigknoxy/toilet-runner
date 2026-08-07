@@ -28,9 +28,8 @@ bun run dev                    # Start Vite dev server (port 5173)
 bun run build                  # Production build to dist/
 bun run preview                # Preview built dist/
 
-# Testing
-bun test                      # Run tests (if test framework added)
-bun test --watch               # Watch mode for tests
+# Typecheck (the only automated gate — CI runs this)
+bun run typecheck              # tsc --noEmit
 
 # Deployment
 bun run deploy                  # Deploy to GitHub Pages (via gh-pages)
@@ -235,17 +234,14 @@ class InputManager {
 
 ### Unit Tests (To Add)
 
-- **Game systems**: Test RunnerController, TrackManager in isolation
-- **Collision detection**: Test AABB logic with known edge cases
-- **Input handling**: Mock keyboard and touch events
-- **State management**: Test GameState transitions
+**No test framework is installed.** `src/test/TrackManager.test.ts` is a hand-rolled `console.log` harness exporting `testTrackManager()` — it is not run by any command or by CI. `bun run typecheck` is the only automated gate.
 
-```bash
-# When test framework added
-bun test                         # Run all tests
-bun test --watch                 # Watch mode
-bun test --coverage              # Generate coverage report
-```
+If a framework is added later, candidates for coverage:
+
+- **Game systems**: RunnerController, TrackManager in isolation
+- **Collision detection**: AABB logic with known edge cases
+- **Input handling**: mocked keyboard and touch events
+- **State management**: GameState transitions
 
 ### Integration Testing
 
