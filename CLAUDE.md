@@ -58,20 +58,31 @@ The world moves toward the player (+Z direction), not the player through the wor
 - `src/ui/` — `HUD`, `ScoreAnimator`, `ScreenManager`, `UIManager`, `AudioControls`, `InstallPrompt`.
 - `public/` — PWA assets: `manifest.json`, hand-written `sw.js`, icons, `privacy-policy.html`.
 
-### Key Constants (in `GameConfig.ts`)
+### Key Constants
 
-Lane width: 3 units. Base speed: 10. Lerp speed: 8. Visible segments: 8. Max obstacles: 50.
+`GameConfig.ts`: lane width 3 units, base speed 10, visible segments 8, max obstacles 50, `maxObstaclesPerPattern` 2.
+
+Constants that live in their own modules and have drifted from what older docs claimed — check the source, not the docs:
+- `LERP_SPEED = 6` in `RunnerController.ts:7` (not 8)
+- `SWIPE_THRESHOLD = 80`, `SWIPE_VERTICAL_THRESHOLD = 60` in `InputManager.ts:1-2` (not 50)
+- Jump tuning in `src/config/JumpConfig.ts`, separate from `GameConfig`
 
 ### Performance Design
 
-- **InstancedMesh** for all obstacles and track segments (target <10 draw calls, <10K triangles)
-- **Object pooling** for obstacles — no per-frame allocations in hot loops
+- **Object pooling** for obstacles — `ObstacleManager` keeps a pool of 50, all added to the scene at construction
+- **InstancedMesh** in `TrackManager` for track segments and lane lines. Note `instancedMesh.visible = false` (`TrackManager.ts:275`) — a floor plane replaced the instanced segments visually, but their matrices are still updated every frame.
+- **Obstacles are NOT instanced**, despite older docs claiming so: `createObstacleGroup` (`ObstacleManager.ts:86`) builds a `THREE.Group` of 4-6 individual `Mesh` objects (base/mid/tip + emoji plane or eyes+smile). Real draw calls are well above the aspirational "<10" target. Converting these to `InstancedMesh` is open work, not a done thing.
+- No per-frame allocations in hot loops (aspirational — `CollisionSystem` and `ParticleSystem` currently violate it)
 - **Performance tiers** auto-detected via a startup WebGL benchmark; controls particle counts, post-processing, pixel ratio
 - **MeshLambertMaterial** everywhere (no PBR); fog hides distant pop-in
 
 ### Data Persistence
 
-All data in `localStorage` under `toiletRunner_unifiedData` (version 2): player stats, scores, unlocked skins, shop state. Legacy keys are auto-migrated.
+`StatsManager` owns `toiletRunner_unifiedData` (player stats, scores, unlocked skins) and migrates the legacy `toiletRunner_stats` / `toiletRunner_gameData` keys into it.
+
+It is **not** a single unified store despite the name. These keys are also live and independent: `toiletRunner_coins` and `toiletRunner_challenges` (`DailyChallenges`), `toiletRunner_shop` (`ShopManager`), `toiletRunner_powerups`, `toiletRunner_analytics`, `toiletRunner_session`.
+
+`StatsManager` writes `version: 2` but never reads it back on load — there is no working migration path for a future schema change, and a partial blob yields `undefined` fields. Treat the version field as aspirational.
 
 ## Code Style
 
