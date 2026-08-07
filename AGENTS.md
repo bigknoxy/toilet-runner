@@ -212,7 +212,7 @@ function checkCollision(): boolean {
 ## Input Handling
 
 - **Cross-platform**: Support both keyboard and touch/swipe
-- **Threshold-based**: Swipe detection with 50px threshold
+- **Threshold-based**: Swipe detection with 80px horizontal / 60px vertical threshold (`InputManager.ts:1-2`)
 - **Debouncing**: Prevent rapid state changes
 - **No scroll interference**: Use touchstart/touchend, not touchmove
 
@@ -291,7 +291,7 @@ function updateTrack(delta: number): void {
 ### Obstacle Mechanics
 
 - **Poop obstacles**: Cone geometry (ConeGeometry(0.6, 0.8, 8))
-- **InstancedMesh**: Single draw call for all obstacles
+- **Not instanced (yet)**: `createObstacleGroup` (`ObstacleManager.ts:86`) builds a `THREE.Group` of 4-6 individual `Mesh` objects, and all 50 pooled groups are added to the scene at construction. Instancing them is a target, not the current state
 - **Spawn patterns**: Single, double, or triple obstacles per segment
 - **Difficulty scaling**: Spawn rate and speed increase over score
 
@@ -488,7 +488,7 @@ Before every release, you MUST:
 ## Performance Targets
 
 - **FPS**: 55-60 on mid-range mobile (2020+ devices)
-- **Draw calls**: <10 total (1 player, 1-2 ground, 1 obstacles, UI)
+- **Draw calls**: <10 total (1 player, 1-2 ground, 1 obstacles, UI) — target, not current. Obstacles alone are ~60-150 today
 - **Triangles**: <10,000 (low-poly models, simple materials)
 - **Memory**: Stable, no growth over time (object pooling, no per-frame allocations)
 
