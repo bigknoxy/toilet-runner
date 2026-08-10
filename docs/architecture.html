@@ -208,7 +208,7 @@ Everything downstream (particle budgets, post-processing, pixel ratio) reads fro
   <li><strong>Object pooling</strong> for obstacles; no per-frame allocations in hot loops. Reuse
       <code>THREE.Vector3</code>/<code>Box3</code> instances in <code>update()</code>.</li>
   <li><strong>MeshLambertMaterial</strong> everywhere, no PBR.</li>
-  <li><strong>Fog</strong> hides pop-in at the spawn distance.</li>
+  <li><strong>Fog</strong> hides pop-in at the spawn distance. <code>HORIZON_COLOR</code> (<code>0x4a6d8c</code>) in <code>SceneManager.ts</code> is shared by the fog, the renderer clear colour, and the CSS body background — the renderer uses <code>alpha: true</code>, so any mismatch draws a band across the skyline. Fog range 45-130 keeps obstacles readable from their ~90-unit spawn distance.</li>
   <li>Delta time capped at <code>0.1s</code> in <code>GameLoop</code> so a backgrounded tab does not
       teleport the world on return.</li>
 </ul>
