@@ -27,6 +27,28 @@ function press(key: string, init: KeyboardEventInit = {}): KeyboardEvent {
   return event;
 }
 
+function touchPoint(x: number, y: number): Touch {
+  return { clientX: x, clientY: y } as unknown as Touch;
+}
+
+function touchStart(x: number, y: number): void {
+  window.dispatchEvent(
+    new TouchEvent('touchstart', { touches: [touchPoint(x, y)] } as unknown as TouchEventInit)
+  );
+}
+
+function touchMove(x: number, y: number): void {
+  window.dispatchEvent(
+    new TouchEvent('touchmove', { touches: [touchPoint(x, y)] } as unknown as TouchEventInit)
+  );
+}
+
+function touchEnd(x: number, y: number): void {
+  window.dispatchEvent(
+    new TouchEvent('touchend', { changedTouches: [touchPoint(x, y)] } as unknown as TouchEventInit)
+  );
+}
+
 beforeEach(() => {
   calls = { lanes: [], jumps: 0, pauses: 0 };
   document.body.innerHTML = '';
@@ -105,5 +127,62 @@ describe('keyboard', () => {
     input.teardown();
     press('ArrowLeft');
     expect(calls.lanes).toEqual([]);
+  });
+});
+
+describe('touch', () => {
+  test('a swipe past the threshold fires during touchmove, before touchend', () => {
+    input = makeInput();
+    touchStart(100, 100);
+    touchMove(140, 100);
+    // The gesture must resolve here, not wait for the finger to lift.
+    expect(calls.lanes).toEqual([1]);
+    touchEnd(140, 100);
+    expect(calls.lanes).toEqual([1]);
+  });
+
+  test('a resolved touchmove gesture does not double-fire on touchend', () => {
+    input = makeInput();
+    touchStart(100, 100);
+    touchMove(60, 100);
+    expect(calls.lanes).toEqual([-1]);
+    touchEnd(60, 100);
+    expect(calls.lanes).toEqual([-1]);
+  });
+
+  test('an upward swipe past the vertical threshold jumps on touchmove', () => {
+    input = makeInput();
+    touchStart(100, 100);
+    touchMove(100, 60);
+    expect(calls.jumps).toBe(1);
+    touchEnd(100, 60);
+    expect(calls.jumps).toBe(1);
+  });
+
+  test('teardown removes the touchmove listener', () => {
+    input = makeInput();
+    input.teardown();
+    touchStart(100, 100);
+    touchMove(140, 100);
+    expect(calls.lanes).toEqual([]);
+  });
+
+  test('gate blocks touchmove swipes', () => {
+    input = makeInput(() => false);
+    touchStart(100, 100);
+    touchMove(140, 100);
+    expect(calls.lanes).toEqual([]);
+    touchEnd(140, 100);
+    expect(calls.lanes).toEqual([]);
+  });
+
+  test('tap-zone fallback still fires on touchend for a short, stationary tap', () => {
+    input = makeInput();
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { value: 400, configurable: true });
+    touchStart(20, 100);
+    touchEnd(20, 100);
+    expect(calls.lanes).toEqual([-1]);
+    Object.defineProperty(window, 'innerWidth', { value: originalWidth, configurable: true });
   });
 });
