@@ -17,7 +17,27 @@ bun run dev
 
 # Build for production
 bun run build
+
+# Run unit tests
+bun run test
 ```
+
+## Testing
+
+Unit tests live in `tests/` and run on Bun's built-in test runner. `bunfig.toml`
+preloads `tests/setup.ts`, which registers happy-dom to supply `window`,
+`document`, and `localStorage`.
+
+```bash
+bun run test                                   # all tests
+bun test tests/InputManager.test.ts            # one file
+bun test -t "held jump does not bunny-hop"     # one case
+```
+
+Coverage is aimed at the bugs TypeScript cannot catch: key auto-repeat
+(`InputManager`), the end-of-run personal-best verdict and its
+capture-before-`endSession()` ordering rule (`ScoreVerdict`), the score-popup
+cap (`UIManager`), and scene detach on dispose (`SpeedLines`).
 
 ## Tech Stack
 
@@ -67,7 +87,7 @@ A humorous 3D endless runner where a toilet paper roll runs forward, avoiding pi
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| **CI** | PRs to `main` | Typecheck (`tsc --noEmit`) + build |
+| **CI** | PRs to `main` | Typecheck (`tsc --noEmit`) + unit tests (`bun test`) + build |
 | **Deploy** | Push to `main` | Build and publish to GitHub Pages |
 | **Release** | Push `v*` tag | Create GitHub Release with auto-generated notes |
 

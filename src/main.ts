@@ -31,6 +31,7 @@ import { ScoreAnimator } from './ui/ScoreAnimator';
 import { HUD } from './ui/HUD';
 import { TrailRenderer } from './game/TrailRenderer';
 import { SpeedLines } from './game/visual/SpeedLines';
+import { getScoreVerdict } from './game/ScoreVerdict';
 import { InstallPrompt } from './ui/InstallPrompt';
 
 const BASE_SPEED = 10;
@@ -755,8 +756,9 @@ class ToiletRunner {
 
     // Cached so returning from the leaderboard re-renders the same verdict.
     // Recomputing there would compare the score against the best it just set.
-    this._gameOverIsNewBest = Math.floor(this.score) > previousBest && this.score > 0;
-    this._gameOverMessage = this.getEncouragingMessage(this.score, previousBest, this.survivalTime);
+    const verdict = getScoreVerdict(this.score, previousBest, this.survivalTime);
+    this._gameOverIsNewBest = verdict.isNewBest;
+    this._gameOverMessage = verdict.message;
     this.ui.showGameOverScreen(this.score, this._gameOverMessage, this._gameOverIsNewBest, isHighScore);
   }
 
@@ -774,15 +776,6 @@ class ToiletRunner {
     // Update leaderboard display
     const topScores = this.leaderboard.getTopScores();
     this.ui.updateLeaderboardFull(topScores);
-  }
-
-  private getEncouragingMessage(score: number, highScore: number, time: number): string {
-    if (score > highScore && score > 0) return 'New Personal Best!';
-    if (score > highScore * 0.9 && highScore > 0) return 'So close to your record!';
-    if (time > 60) return 'Great endurance!';
-    if (score > 200) return 'Impressive run!';
-    if (score > 50) return 'Nice dodging!';
-    return 'Keep practicing!';
   }
 
   public showLeaderboard(): void {

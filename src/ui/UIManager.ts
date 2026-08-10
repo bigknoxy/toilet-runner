@@ -2,6 +2,10 @@ import { GameState } from '../core/GameState';
 import { DailyChallengeSystem } from '../game/DailyChallenges';
 import { StatsManager, PlayerStats } from '../core/StatsManager';
 
+/** Matches the 0.9s score-popup CSS animation in styles/modals.css. */
+const SCORE_POPUP_LIFETIME_MS = 900;
+const MAX_SCORE_POPUPS = 3;
+
 export class UIManager {
   private _startScreen: HTMLElement | null = null;
   private _pauseScreen: HTMLElement | null = null;
@@ -1022,12 +1026,35 @@ export class UIManager {
 
   private _reachedMilestones: Set<number> = new Set();
 
+  private _livePopups: HTMLElement[] = [];
+
+  /**
+   * Near-miss and close-pass bonuses can fire several times a second, so the
+   * live popups are capped: the oldest is retired as soon as the cap is hit
+   * rather than letting an unbounded stack of divs pile up on the body.
+   */
   public showScorePopup(text: string, isNearMiss: boolean): void {
+    while (this._livePopups.length >= MAX_SCORE_POPUPS) {
+      const oldest = this._livePopups.shift();
+      oldest?.remove();
+    }
+
     const popup = document.createElement('div');
     popup.className = `score-popup${isNearMiss ? ' near-miss' : ''}`;
     popup.textContent = text;
     document.body.appendChild(popup);
-    setTimeout(() => popup.remove(), 900);
+    this._livePopups.push(popup);
+
+    setTimeout(() => {
+      const index = this._livePopups.indexOf(popup);
+      if (index !== -1) this._livePopups.splice(index, 1);
+      popup.remove();
+    }, SCORE_POPUP_LIFETIME_MS);
+  }
+
+  /** Live popup count, for tests. */
+  public getLivePopupCount(): number {
+    return this._livePopups.length;
   }
 
   public showStreakNotification(streak: number): void {

@@ -14,14 +14,25 @@ bun run dev            # Start Vite dev server on port 5173
 bun run build          # Production build to dist/
 bun run preview        # Preview production build
 bun run typecheck      # Run tsc --noEmit (must pass before merge)
+bun run test           # Run unit tests via bun test (must pass before merge)
 bun run deploy         # Deploy dist/ to GitHub Pages via gh-pages
 ```
 
-There is no linter, formatter, or meaningful test suite configured. TypeScript strict mode is enforced via `tsconfig.json`.
+There is no linter or formatter configured. TypeScript strict mode is enforced via `tsconfig.json`.
+
+Unit tests live in `tests/` and run on Bun's built-in runner. `bunfig.toml` preloads
+`tests/setup.ts`, which registers happy-dom so `window`, `document`, and
+`localStorage` exist. Run a single file with `bun test tests/InputManager.test.ts`
+and a single case with `bun test -t "held jump does not bunny-hop"`.
+
+Coverage targets execution-order and state-lifetime bugs that `tsc` cannot see:
+key auto-repeat (`InputManager`), the personal-best verdict and its
+capture-before-`endSession()` ordering rule (`ScoreVerdict`), the score-popup
+cap (`UIManager`), and scene detach on dispose (`SpeedLines`).
 
 ## CI / CD
 
-- **CI** (`.github/workflows/ci.yml`) — Runs `bun run typecheck` and `bun run build` on every PR to `main`. Both must pass before merging.
+- **CI** (`.github/workflows/ci.yml`) — Runs `bun run typecheck`, `bun run test`, and `bun run build` on every PR to `main`. All three must pass before merging.
 - **Deploy** (`.github/workflows/deploy.yml`) — Builds and publishes to GitHub Pages on every push to `main`.
 - **Release** (`.github/workflows/release.yml`) — Creates a GitHub Release with auto-generated notes when a `v*` tag is pushed. Verifies the tag matches the `package.json` version — the release fails if they differ.
 
