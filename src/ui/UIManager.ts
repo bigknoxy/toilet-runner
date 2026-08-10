@@ -50,6 +50,8 @@ export class UIManager {
   private _onChallenges: (() => void) | null = null;
   private _onStats: (() => void) | null = null;
   private _onShop: (() => void) | null = null;
+  private _onControls: (() => void) | null = null;
+  private _onTutorialDismiss: (() => void) | null = null;
   private _onSelectSkin: ((skinId: string) => void) | null = null;
   private _onPurchaseUpgrade: ((upgradeId: string) => void) | null = null;
   private _onSubmitName: ((name: string) => void) | null = null;
@@ -160,7 +162,17 @@ export class UIManager {
       if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
 
       if (e.key === 'Escape') {
-        if (this.currentGameState === GameState.GAMEOVER) {
+        const tutorialScreen = document.getElementById('tutorial-screen');
+        // Test the positive marker `_showScreen` sets. Absence of `hidden` is
+        // not the same thing: the markup ships without that class, so a stray
+        // Escape before the first `hideAllScreens()` would fire this branch.
+        if (tutorialScreen && tutorialScreen.classList.contains('visible')) {
+          if (this._onTutorialDismiss) this._onTutorialDismiss();
+          return;
+        }
+        if (this.currentGameState === GameState.CONTROLS) {
+          if (this._onBackToMenu) this._onBackToMenu();
+        } else if (this.currentGameState === GameState.GAMEOVER) {
           if (this._onRestart) this._onRestart();
         } else if (this.currentGameState === GameState.LEADERBOARD) {
           if (this._onBackToGameOver) this._onBackToGameOver();
@@ -182,6 +194,7 @@ export class UIManager {
           const isNavigationButton = target.closest('#skins-button') ||
                                     target.closest('#challenges-button') ||
                                     target.closest('#stats-button') ||
+                                    target.closest('#controls-button') ||
                                     target.closest('#play-button') ||
                                     target.closest('.skin-card') ||
                                     target.closest('.challenge-item') ||
@@ -242,6 +255,30 @@ export class UIManager {
         e.stopImmediatePropagation();
         if (this._onStats) {
           this._onStats();
+        }
+      });
+    }
+
+    // Controls button handler
+    const controlsButton = document.getElementById('controls-button');
+    if (controlsButton) {
+      controlsButton.addEventListener('click', (e: Event) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        if (this._onControls) {
+          this._onControls();
+        }
+      });
+    }
+
+    // Tutorial dismiss button handler
+    const tutorialDismissButton = document.getElementById('tutorial-dismiss-button');
+    if (tutorialDismissButton) {
+      tutorialDismissButton.addEventListener('click', (e: Event) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        if (this._onTutorialDismiss) {
+          this._onTutorialDismiss();
         }
       });
     }
@@ -324,6 +361,17 @@ export class UIManager {
     const backFromShopButton = document.getElementById('back-from-shop-button');
     if (backFromShopButton) {
       backFromShopButton.addEventListener('click', (e: Event) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        if (this._onBackToMenu) {
+          this._onBackToMenu();
+        }
+      });
+    }
+
+    const backFromControlsButton = document.getElementById('back-from-controls-button');
+    if (backFromControlsButton) {
+      backFromControlsButton.addEventListener('click', (e: Event) => {
         e.stopPropagation();
         e.stopImmediatePropagation();
         if (this._onBackToMenu) {
@@ -444,6 +492,14 @@ export class UIManager {
     this._showScreen('shop-screen');
   }
 
+  public showControlsScreen(): void {
+    this._showScreen('controls-screen');
+  }
+
+  public showTutorialOverlay(): void {
+    this._showScreen('tutorial-screen');
+  }
+
   private _showScreen(screenId: string): void {
     this.hideAllScreens();
     const screen = document.getElementById(screenId);
@@ -479,7 +535,7 @@ export class UIManager {
     ];
     cachedElements.forEach(el => this._hideElement(el));
 
-    const screenIds = ['skin-screen', 'challenges-screen', 'stats-screen', 'shop-screen'];
+    const screenIds = ['skin-screen', 'challenges-screen', 'stats-screen', 'shop-screen', 'controls-screen', 'tutorial-screen'];
     screenIds.forEach(id => this._hideElement(document.getElementById(id)));
 
     if (this._pauseButtonContainer) {
@@ -630,6 +686,14 @@ export class UIManager {
 
   public setOnShopCallback(callback: () => void): void {
     this._onShop = callback;
+  }
+
+  public setOnControlsCallback(callback: () => void): void {
+    this._onControls = callback;
+  }
+
+  public setOnTutorialDismissCallback(callback: () => void): void {
+    this._onTutorialDismiss = callback;
   }
 
   public setOnSelectSkinCallback(callback: (skinId: string) => void): void {
@@ -1009,6 +1073,10 @@ export class UIManager {
         break;
       case GameState.SHOP:
         this.showShopScreen();
+        this.hidePauseButton();
+        break;
+      case GameState.CONTROLS:
+        this.showControlsScreen();
         this.hidePauseButton();
         break;
       default:

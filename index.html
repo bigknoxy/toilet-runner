@@ -129,6 +129,10 @@
             <span class="btn-icon" aria-hidden="true">&#128202;</span>
             <span class="btn-text">Stats</span>
           </button>
+          <button id="controls-button" class="btn btn-nav menu-item" aria-label="Controls">
+            <span class="btn-icon" aria-hidden="true">&#127918;</span>
+            <span class="btn-text">Controls</span>
+          </button>
         </div>
         <div id="app-version" class="app-version"></div>
       </div>
@@ -287,6 +291,76 @@
       </div>
       <div class="modal-footer shop-footer">
         <button id="back-from-shop-button" class="btn btn-secondary menu-item">&larr; Back</button>
+      </div>
+    </div>
+
+    <!-- First-run "How to Play" Tutorial Overlay -->
+    <div class="modal modal-content" id="tutorial-screen" style="display: none;" role="dialog" aria-label="How to Play" aria-modal="true">
+      <div class="modal-header">
+        <h1>&#127918; How to Play</h1>
+      </div>
+      <div class="modal-body controls-body">
+        <ul class="controls-list" aria-label="Game controls">
+          <li class="control-row">
+            <span class="control-icon" aria-hidden="true">&#8592;&#8594;</span>
+            <span class="control-text">
+              <strong>Move</strong> &mdash; Arrow Left/Right or A/D &middot; swipe left/right
+            </span>
+          </li>
+          <li class="control-row">
+            <span class="control-icon" aria-hidden="true">&#8593;</span>
+            <span class="control-text">
+              <strong>Jump</strong> &mdash; Arrow Up, W, or Space &middot; swipe up
+            </span>
+          </li>
+          <li class="control-row">
+            <span class="control-icon" aria-hidden="true">&#9208;&#65039;</span>
+            <span class="control-text">
+              <strong>Pause</strong> &mdash; Pause button or Escape
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button id="tutorial-dismiss-button" class="btn btn-primary menu-item" aria-label="Got it, start playing">Got it!</button>
+      </div>
+    </div>
+
+    <!-- Controls Reference Screen -->
+    <div class="modal modal-content" id="controls-screen" style="display: none;" role="dialog" aria-label="Controls">
+      <div class="modal-header">
+        <h1>&#127918; Controls</h1>
+      </div>
+      <div class="modal-body controls-body">
+        <ul class="controls-list" aria-label="Game controls">
+          <li class="control-row">
+            <span class="control-icon" aria-hidden="true">&#8592;</span>
+            <span class="control-text">
+              <strong>Move Left</strong> &mdash; Arrow Left / A &middot; swipe left
+            </span>
+          </li>
+          <li class="control-row">
+            <span class="control-icon" aria-hidden="true">&#8594;</span>
+            <span class="control-text">
+              <strong>Move Right</strong> &mdash; Arrow Right / D &middot; swipe right
+            </span>
+          </li>
+          <li class="control-row">
+            <span class="control-icon" aria-hidden="true">&#8593;</span>
+            <span class="control-text">
+              <strong>Jump</strong> &mdash; Arrow Up, W, or Space &middot; swipe up
+            </span>
+          </li>
+          <li class="control-row">
+            <span class="control-icon" aria-hidden="true">&#9208;&#65039;</span>
+            <span class="control-text">
+              <strong>Pause</strong> &mdash; Pause button or Escape
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="modal-footer controls-footer">
+        <button id="back-from-controls-button" class="btn btn-secondary menu-item">&larr; Back</button>
       </div>
     </div>
   </div>

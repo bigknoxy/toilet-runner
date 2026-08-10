@@ -146,6 +146,10 @@ class ToiletRunner {
 
       this.ui.setGameState(this.currentGameState);
 
+      if (!this.statsManager.hasTutorialBeenSeen()) {
+        this.ui.showTutorialOverlay();
+      }
+
       this.ui.setDailyChallenges(this.dailyChallenges);
       this.ui.setStatsManager(this.statsManager);
 
@@ -348,6 +352,8 @@ class ToiletRunner {
     this.ui.setOnChallengesCallback(this.showChallengesScreen.bind(this));
     this.ui.setOnStatsCallback(this.showStatsScreen.bind(this));
     this.ui.setOnShopCallback(this.showShopScreen.bind(this));
+    this.ui.setOnControlsCallback(this.showControlsScreen.bind(this));
+    this.ui.setOnTutorialDismissCallback(this.dismissTutorial.bind(this));
 
     // Skin selection callback
     this.ui.setOnSelectSkinCallback((skinId: string) => {
@@ -846,6 +852,21 @@ class ToiletRunner {
     this.ui.setGameState(this.currentGameState);
     this.updateShopDisplay();
     this.analyticsManager.trackShopOpened(this.shopManager.getCoinBalance());
+  }
+
+  public showControlsScreen(): void {
+    this.currentGameState = GameState.CONTROLS;
+    this.ui.setGameState(this.currentGameState);
+  }
+
+  /**
+   * Dismisses the first-run tutorial overlay. Always returns to the start
+   * screen regardless of whether the flag was already set, so dismissing
+   * can never leave the play button unreachable.
+   */
+  private dismissTutorial(): void {
+    this.statsManager.markTutorialSeen();
+    this.ui.showStartScreen();
   }
 
   private updateShopDisplay(): void {

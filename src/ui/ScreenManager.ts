@@ -14,14 +14,15 @@ export class ScreenManager {
 
   // Transition rules: Map of source states to allowed destination states
   private readonly _transitionRules: Map<GameState, GameState[]> = new Map([
-    [GameState.MENU, [GameState.PLAYING, GameState.SKINS, GameState.CHALLENGES, GameState.STATS, GameState.LEADERBOARD]],
+    [GameState.MENU, [GameState.PLAYING, GameState.SKINS, GameState.CHALLENGES, GameState.STATS, GameState.LEADERBOARD, GameState.CONTROLS]],
     [GameState.PLAYING, [GameState.PAUSED, GameState.GAMEOVER]],
     [GameState.PAUSED, [GameState.PLAYING, GameState.MENU]],
     [GameState.GAMEOVER, [GameState.MENU, GameState.PLAYING, GameState.LEADERBOARD]],
     [GameState.LEADERBOARD, [GameState.MENU]],
     [GameState.SKINS, [GameState.MENU]],
     [GameState.CHALLENGES, [GameState.MENU]],
-    [GameState.STATS, [GameState.MENU]]
+    [GameState.STATS, [GameState.MENU]],
+    [GameState.CONTROLS, [GameState.MENU]]
   ]);
 
   constructor() {
