@@ -424,7 +424,7 @@ class ToiletRunner {
       this.runner.setSpeed(gameSpeed);
       this.runner.update(delta);
       this.track.update(delta, gameSpeed);
-      this.obstacles.update(delta, gameSpeed, this.score);
+      this.obstacles.update(delta, gameSpeed, this.survivalTime);
       this.environment.update(delta, gameSpeed);
 
       // Check for successful dodges and trigger celebration effects

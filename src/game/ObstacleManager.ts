@@ -41,6 +41,8 @@ export class ObstacleManager {
   private _activeCount = 0;
   private _nextSpawnId = 1;
   private _distanceSinceLastSpawn = 0;
+  /** World speed from the last update(), used to hold the reaction-window floor. */
+  private _currentSpeed = 0;
   private _nextSpawnGap = 22; // Initial EASY gap
   private _patternsInWave = 0;
   private _dodgedCount = 0;
@@ -176,8 +178,9 @@ export class ObstacleManager {
     }
   }
 
-  update(delta: number, speed: number, score: number): void {
-    PatternSequencer.setScore(score);
+  update(delta: number, speed: number, elapsedSeconds: number): void {
+    PatternSequencer.setElapsedTime(elapsedSeconds);
+    this._currentSpeed = speed;
 
     this._distanceSinceLastSpawn += speed * delta;
 
@@ -191,7 +194,7 @@ export class ObstacleManager {
 
       // After every 3 patterns, add wave rest gap
       if (this._patternsInWave >= 3) {
-        this._nextSpawnGap += DifficultyManager.getGapBetweenWaves(score);
+        this._nextSpawnGap += DifficultyManager.getGapBetweenWaves(elapsedSeconds);
         this._patternsInWave = 0;
       }
     }
@@ -264,7 +267,12 @@ export class ObstacleManager {
     const inactiveObstacle = this._obstacles.find(obs => !obs.active);
     if (!inactiveObstacle) return;
 
-    const spawnZ = this._trackManager.getFrontZ() - SEGMENT_LENGTH;
+    // The track runway is a fixed distance, so the reaction window
+    // (distance / speed) shrinks as speed climbs. Push the spawn further out
+    // whenever the runway would drop below the floor. See issue #74.
+    const runwayZ = this._trackManager.getFrontZ() - SEGMENT_LENGTH;
+    const floorZ = -DifficultyManager.getMinSpawnDistance(this._currentSpeed);
+    const spawnZ = Math.min(runwayZ, floorZ);
 
     inactiveObstacle.active = true;
     inactiveObstacle.spawnId = this._nextSpawnId++;
