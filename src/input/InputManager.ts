@@ -1,5 +1,8 @@
-const SWIPE_THRESHOLD = 80;
-const SWIPE_VERTICAL_THRESHOLD = 60;
+// Industry norm for a mobile swipe gesture is ~25-35px before it reads as a
+// deliberate directional move (iOS/Android system gestures resolve in that
+// band too). 30px is responsive without tripping on a shaky tap.
+const SWIPE_THRESHOLD = 30;
+const SWIPE_VERTICAL_THRESHOLD = 25;
 const SWIPE_DEBOUNCE_MS = 16;
 const TAP_ZONE_RATIO = 0.3;
 
@@ -8,6 +11,9 @@ export class InputManager {
   private _touchStartY: number = 0;
   private _touchStartTime: number = 0;
   private _lastSwipeTime: number = 0;
+  /** True once the in-progress touch has already fired a lane change/jump via
+   * touchmove, so touchend does not resolve the same gesture a second time. */
+  private _touchGestureConsumed: boolean = false;
   private _onLaneChange: (direction: -1 | 1) => void;
   private _onJump: () => void;
   private _onPause?: () => void;
@@ -52,11 +58,13 @@ export class InputManager {
 
   private setupTouch(): void {
     window.addEventListener('touchstart', this.handleTouchStart, { passive: true, capture: true });
+    window.addEventListener('touchmove', this.handleTouchMove, { passive: true, capture: true });
     window.addEventListener('touchend', this.handleTouchEnd, { passive: true, capture: true });
   }
 
   private removeTouch(): void {
     window.removeEventListener('touchstart', this.handleTouchStart);
+    window.removeEventListener('touchmove', this.handleTouchMove);
     window.removeEventListener('touchend', this.handleTouchEnd);
   }
 
@@ -114,12 +122,51 @@ export class InputManager {
       this._touchStartX = event.touches[0].clientX;
       this._touchStartY = event.touches[0].clientY;
       this._touchStartTime = performance.now();
+      this._touchGestureConsumed = false;
+    }
+  };
+
+  /** Resolves the gesture as soon as a threshold is crossed, so a deliberate
+   * swipe fires immediately instead of waiting for the finger to lift. */
+  private handleTouchMove = (event: TouchEvent): void => {
+    if (!this._acceptsGameplayInput()) return;
+    if (this._touchGestureConsumed) return;
+    if (event.touches.length === 0) return;
+
+    const now = performance.now();
+    if (now - this._lastSwipeTime < SWIPE_DEBOUNCE_MS) return;
+
+    const touchX = event.touches[0].clientX;
+    const touchY = event.touches[0].clientY;
+
+    const deltaX = touchX - this._touchStartX;
+    const deltaY = touchY - this._touchStartY;
+
+    if (deltaY < -SWIPE_VERTICAL_THRESHOLD && Math.abs(deltaX) < SWIPE_THRESHOLD) {
+      this._lastSwipeTime = now;
+      this._touchGestureConsumed = true;
+      this._onJump();
+      return;
+    }
+
+    if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaY) < SWIPE_THRESHOLD * 1.5) {
+      this._lastSwipeTime = now;
+      this._touchGestureConsumed = true;
+      if (deltaX > 0) {
+        this._onLaneChange(1);
+      } else {
+        this._onLaneChange(-1);
+      }
     }
   };
 
   private handleTouchEnd = (event: TouchEvent): void => {
     if (!this._acceptsGameplayInput()) return;
     if (event.changedTouches.length === 0) return;
+    if (this._touchGestureConsumed) {
+      this._touchGestureConsumed = false;
+      return;
+    }
 
     const now = performance.now();
 
