@@ -68,6 +68,53 @@ export class PatternPool {
         obstacles: [{ lane: 2, speedMultiplier: 1.0 }],
         gapToNext: 22,
         guaranteedClearLane: 1
+      },
+      {
+        id: 'E7',
+        difficulty: 'EASY',
+        obstacles: [{ lane: 0, speedMultiplier: 1.1 }],
+        gapToNext: 22,
+        guaranteedClearLane: 2
+      },
+      {
+        id: 'E8',
+        difficulty: 'EASY',
+        obstacles: [{ lane: 2, speedMultiplier: 1.1 }],
+        gapToNext: 22,
+        guaranteedClearLane: 0
+      },
+      {
+        id: 'E9',
+        difficulty: 'EASY',
+        // Staircase step: outer-lane single hit, tighter rhythm than E1-E8
+        obstacles: [{ lane: 0, speedMultiplier: 1.0 }],
+        gapToNext: 20,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'E10',
+        difficulty: 'EASY',
+        obstacles: [{ lane: 2, speedMultiplier: 1.0 }],
+        gapToNext: 20,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'E11',
+        difficulty: 'EASY',
+        // Wide double: outer lanes blocked, center jumpable middle stays clear
+        obstacles: [
+          { lane: 0, speedMultiplier: 1.0 },
+          { lane: 2, speedMultiplier: 1.0 }
+        ],
+        gapToNext: 22,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'E12',
+        difficulty: 'EASY',
+        obstacles: [{ lane: 1, speedMultiplier: 1.0 }],
+        gapToNext: 22,
+        guaranteedClearLane: 0
       }
     ];
   }
@@ -113,6 +160,60 @@ export class PatternPool {
         ],
         gapToNext: 18,
         guaranteedClearLane: 1
+      },
+      {
+        id: 'M5',
+        difficulty: 'MEDIUM',
+        // Alternating wall: adjacent-lane pair shifted right vs M1's shifted left feel
+        obstacles: [
+          { lane: 1, speedMultiplier: 1.0 },
+          { lane: 0, speedMultiplier: 1.1 }
+        ],
+        gapToNext: 18,
+        guaranteedClearLane: 2
+      },
+      {
+        id: 'M6',
+        difficulty: 'MEDIUM',
+        obstacles: [
+          { lane: 2, speedMultiplier: 1.0 },
+          { lane: 1, speedMultiplier: 1.1 }
+        ],
+        gapToNext: 18,
+        guaranteedClearLane: 0
+      },
+      {
+        id: 'M7',
+        difficulty: 'MEDIUM',
+        // Tight-then-rest: short gap creates a quick follow-up beat
+        obstacles: [{ lane: 0, speedMultiplier: 1.1 }],
+        gapToNext: 16,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'M8',
+        difficulty: 'MEDIUM',
+        obstacles: [{ lane: 2, speedMultiplier: 1.1 }],
+        gapToNext: 16,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'M9',
+        difficulty: 'MEDIUM',
+        // Longer rest after a double-lane block, echoing the staircase idea
+        obstacles: [
+          { lane: 0, speedMultiplier: 1.1 },
+          { lane: 2, speedMultiplier: 1.2 }
+        ],
+        gapToNext: 20,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'M10',
+        difficulty: 'MEDIUM',
+        obstacles: [{ lane: 1, speedMultiplier: 1.2 }],
+        gapToNext: 20,
+        guaranteedClearLane: 0
       }
     ];
   }
@@ -158,6 +259,53 @@ export class PatternPool {
         ],
         gapToNext: 15,
         guaranteedClearLane: 2
+      },
+      {
+        id: 'H5',
+        difficulty: 'HARD',
+        // Alternating wall variant on the opposite side from H1/H4
+        obstacles: [
+          { lane: 1, speedMultiplier: 1.2 },
+          { lane: 0, speedMultiplier: 1.3 }
+        ],
+        gapToNext: 15,
+        guaranteedClearLane: 2
+      },
+      {
+        id: 'H6',
+        difficulty: 'HARD',
+        obstacles: [
+          { lane: 2, speedMultiplier: 1.2 },
+          { lane: 1, speedMultiplier: 1.3 }
+        ],
+        gapToNext: 15,
+        guaranteedClearLane: 0
+      },
+      {
+        id: 'H7',
+        difficulty: 'HARD',
+        // Tight-then-rest: short single-lane jab before a longer breather
+        obstacles: [{ lane: 0, speedMultiplier: 1.3 }],
+        gapToNext: 14,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'H8',
+        difficulty: 'HARD',
+        obstacles: [{ lane: 2, speedMultiplier: 1.3 }],
+        gapToNext: 14,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'H9',
+        difficulty: 'HARD',
+        // Double-lane block with a jumpable middle, higher speed pressure
+        obstacles: [
+          { lane: 0, speedMultiplier: 1.4 },
+          { lane: 2, speedMultiplier: 1.4 }
+        ],
+        gapToNext: 16,
+        guaranteedClearLane: 1
       }
     ];
   }
@@ -203,6 +351,42 @@ export class PatternPool {
         ],
         gapToNext: 13,
         guaranteedClearLane: 2
+      },
+      {
+        id: 'X5',
+        difficulty: 'EXTREME',
+        // Alternating wall pushed to the far side, top-end speed pressure
+        obstacles: [
+          { lane: 1, speedMultiplier: 1.6 },
+          { lane: 0, speedMultiplier: 1.7 }
+        ],
+        gapToNext: 13,
+        guaranteedClearLane: 2
+      },
+      {
+        id: 'X6',
+        difficulty: 'EXTREME',
+        obstacles: [
+          { lane: 2, speedMultiplier: 1.6 },
+          { lane: 1, speedMultiplier: 1.7 }
+        ],
+        gapToNext: 13,
+        guaranteedClearLane: 0
+      },
+      {
+        id: 'X7',
+        difficulty: 'EXTREME',
+        // Tight-then-rest: brutal single jab, shortest gap in the pool
+        obstacles: [{ lane: 0, speedMultiplier: 1.7 }],
+        gapToNext: 13,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'X8',
+        difficulty: 'EXTREME',
+        obstacles: [{ lane: 2, speedMultiplier: 1.7 }],
+        gapToNext: 13,
+        guaranteedClearLane: 1
       }
     ];
   }
