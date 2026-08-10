@@ -5,7 +5,7 @@ export enum ObstacleType {
   POOP = 'poop',              // Original static obstacle
   MOVING_BRUSH = 'brush',     // Moving toilet brush (like Subway Surfers trains)
   WATER_PUDDLE = 'water',     // Slippery puddle that slows player
-  BARRIER_HIGH = 'barrier',   // High barrier (jumpable)
+  BARRIER_HIGH = 'barrier',   // Tall barrier — taller than jump apex, must be dodged
   BARRIER_LOW = 'low_barrier' // Low barrier (dodgeable)
 }
 

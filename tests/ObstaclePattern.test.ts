@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeAll } from 'bun:test';
 import { PatternPool, type Difficulty } from '../src/game/ObstaclePattern';
+import { ObstacleType } from '../src/game/ObstacleTypes';
 
 const DIFFICULTIES: Difficulty[] = ['EASY', 'MEDIUM', 'HARD', 'EXTREME'];
 
@@ -53,5 +54,32 @@ describe('PatternPool', () => {
     const all = PatternPool.getAllPatterns();
     const ids = all.map(p => p.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('BARRIER_HIGH patterns (#71)', () => {
+  test('the pool actually ships barriers, so jump is no longer a free answer', () => {
+    const withBarrier = PatternPool.getAllPatterns().filter(p =>
+      p.obstacles.some(o => o.type === ObstacleType.BARRIER_HIGH)
+    );
+    expect(withBarrier.length).toBeGreaterThan(0);
+  });
+
+  test('barriers appear before EXTREME so the player meets one while there is still time to react', () => {
+    const barrierDifficulties = new Set(
+      PatternPool.getAllPatterns()
+        .filter(p => p.obstacles.some(o => o.type === ObstacleType.BARRIER_HIGH))
+        .map(p => p.difficulty)
+    );
+    expect(barrierDifficulties.has('MEDIUM')).toBe(true);
+  });
+
+  test('no barrier pattern blocks every lane', () => {
+    for (const pattern of PatternPool.getAllPatterns()) {
+      if (!pattern.obstacles.some(o => o.type === ObstacleType.BARRIER_HIGH)) continue;
+      const occupied = new Set(pattern.obstacles.map(o => o.lane));
+      expect(occupied.size).toBeLessThan(3);
+      expect(occupied.has(pattern.guaranteedClearLane)).toBe(false);
+    }
   });
 });

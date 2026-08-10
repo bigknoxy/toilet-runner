@@ -112,9 +112,17 @@ export class HUD {
     this._comboElement.classList.add('combo-break');
     this._comboElement.classList.remove('combo-active');
 
+    // The caller has already zeroed its streak, so the cache must follow or the
+    // next run's first dodge (streak 1) would compare against a stale value.
+    this._lastStreak = 0;
+    this._lastMultiplier = 1;
+
     setTimeout(() => {
       if (this._comboElement) {
         this._comboElement.classList.remove('combo-break');
+        // Clear the text too: without this the broken streak stays on screen
+        // through game over and into the next run.
+        this._comboElement.textContent = '';
       }
     }, 500);
   }

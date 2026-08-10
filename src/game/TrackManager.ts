@@ -1,6 +1,6 @@
 import * as THREE from 'three';
+import { LANE_WIDTH } from './GameConfig';
 
-const LANE_WIDTH = 3;
 const SEGMENT_LENGTH = 10;
 const VISIBLE_SEGMENTS = 8;
 // Reduced from 80 to 60 - obstacles spawn closer for better visibility

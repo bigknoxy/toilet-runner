@@ -130,7 +130,7 @@ sequenceDiagram
   IN-->>RC: lane change / jump (event-driven)
   GL->>RC: update(dt) — lerp toward target lane
   GL->>WM: advance world +Z, spawn / recycle
-  GL->>CS: intersect runner Box3 vs obstacle Box3
+  GL->>CS: swept Box3 test, hitbox half-extents by obstacle type
   alt hit
     CS-->>UI: game over
   else clear
@@ -165,6 +165,29 @@ stateDiagram-v2
 <code>ScreenManager</code> owns the stack; <code>GameState</code> (<code>src/core/GameState.ts</code>)
 is the enum. Pause is the one binding that works outside active play, so
 <code>InputManager</code> handles it before the gameplay-input gate.
+</p>
+
+<h2>Obstacle types</h2>
+<p>
+  Obstacle kinds live in <code>src/game/ObstacleTypes.ts</code>. Two ship today; the rest are
+  declared but unused.
+</p>
+<table>
+  <thead>
+    <tr><th>Type</th><th>Hitbox half-extents (W x H x D)</th><th>Answer</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>POOP</code></td><td>0.5 x 0.8 x 0.7 at y 0.3</td><td>jump or change lane</td></tr>
+    <tr><td><code>BARRIER_HIGH</code></td><td>1.2 x 1.6 x 0.35 at y 1.5</td><td>lane change only</td></tr>
+  </tbody>
+</table>
+<p>
+  The jump apex puts the player mesh at <code>GROUND_Y + JUMP_HEIGHT</code> = 3.0, so its
+  underside reaches 2.6. A barrier top sits at 3.1 and therefore cannot be cleared at any point
+  in the arc. That is what keeps three-lane movement mattering instead of
+  <code>while (true) jump()</code>. Collision half-extents are selected by type in
+  <code>CollisionSystem.halfExtentsFor()</code> and mirrored by the mesh built in
+  <code>ObstacleManager.createBarrierGroup()</code>, so the silhouette matches the hitbox.
 </p>
 
 <h2>Performance design</h2>

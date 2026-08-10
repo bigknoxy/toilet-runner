@@ -2,6 +2,7 @@ import { describe, expect, test, beforeEach } from 'bun:test';
 import * as THREE from 'three';
 import { CollisionSystem } from '../src/game/CollisionSystem';
 import type { ObstacleManager, ActiveObstacle } from '../src/game/ObstacleManager';
+import { ObstacleType } from '../src/game/ObstacleTypes';
 
 // Minimal stand-in for ObstacleManager: CollisionSystem only ever calls
 // getActiveObstacles(), so a full instance (which needs a THREE.Scene,
@@ -38,7 +39,7 @@ describe('CollisionSystem tolerance (#70)', () => {
     // would reach x = 0.7 and this would incorrectly register as a hit.
     const player = playerMeshAt(0, 0.5, 0);
     const obstacles: ActiveObstacle[] = [
-      { x: 1.3, y: 0.5, z: 0, lane: 1, spawnId: 1 }
+      { x: 1.3, y: 0.5, z: 0, lane: 1, spawnId: 1, type: ObstacleType.POOP }
     ];
 
     const hit = collision.checkPlayerVsObstacles(player, fakeManager(obstacles), 0.5, false);
@@ -48,7 +49,7 @@ describe('CollisionSystem tolerance (#70)', () => {
   test('a genuine overlap within the shrunk player hitbox still registers', () => {
     const player = playerMeshAt(0, 0.5, 0);
     const obstacles: ActiveObstacle[] = [
-      { x: 0.5, y: 0.5, z: 0, lane: 1, spawnId: 2 }
+      { x: 0.5, y: 0.5, z: 0, lane: 1, spawnId: 2, type: ObstacleType.POOP }
     ];
 
     const hit = collision.checkPlayerVsObstacles(player, fakeManager(obstacles), 0.5, false);
@@ -69,7 +70,7 @@ describe('CollisionSystem swept collision (#75)', () => {
 
     // Frame 1: obstacle is far ahead, no overlap.
     const frame1: ActiveObstacle[] = [
-      { x: 0, y: 0.5, z: -10, lane: 1, spawnId: 7 }
+      { x: 0, y: 0.5, z: -10, lane: 1, spawnId: 7, type: ObstacleType.POOP }
     ];
     expect(collision.checkPlayerVsObstacles(player, fakeManager(frame1), 0.5, false)).toBeNull();
 
@@ -80,7 +81,7 @@ describe('CollisionSystem swept collision (#75)', () => {
     // through untouched. The swept test must still catch it because the
     // obstacle's travelled range [-10, 2] crosses the player's position.
     const frame2: ActiveObstacle[] = [
-      { x: 0, y: 0.5, z: 2, lane: 1, spawnId: 7 }
+      { x: 0, y: 0.5, z: 2, lane: 1, spawnId: 7, type: ObstacleType.POOP }
     ];
     const hit = collision.checkPlayerVsObstacles(player, fakeManager(frame2), 0.5, false);
     expect(hit).not.toBeNull();
@@ -91,14 +92,67 @@ describe('CollisionSystem swept collision (#75)', () => {
     const player = playerMeshAt(0, 0.5, 0);
 
     const frame1: ActiveObstacle[] = [
-      { x: 0, y: 0.5, z: -20, lane: 1, spawnId: 9 }
+      { x: 0, y: 0.5, z: -20, lane: 1, spawnId: 9, type: ObstacleType.POOP }
     ];
     collision.checkPlayerVsObstacles(player, fakeManager(frame1), 0.5, false);
 
     const frame2: ActiveObstacle[] = [
-      { x: 0, y: 0.5, z: -15, lane: 1, spawnId: 9 }
+      { x: 0, y: 0.5, z: -15, lane: 1, spawnId: 9, type: ObstacleType.POOP }
     ];
     const hit = collision.checkPlayerVsObstacles(player, fakeManager(frame2), 0.5, false);
     expect(hit).toBeNull();
+  });
+});
+
+describe('BARRIER_HIGH is unjumpable (#71)', () => {
+  let collision: CollisionSystem;
+
+  beforeEach(() => {
+    collision = new CollisionSystem();
+  });
+
+  // Jump apex puts the player mesh at GROUND_Y + JUMP_HEIGHT = 3.0.
+  const APEX_Y = 3.0;
+
+  test('a jump at full apex still hits a barrier in the same lane', () => {
+    const player = playerMeshAt(0, APEX_Y, 0);
+    const obstacles: ActiveObstacle[] = [
+      { x: 0, y: 1.5, z: 0, lane: 1, spawnId: 1, type: ObstacleType.BARRIER_HIGH }
+    ];
+
+    const hit = collision.checkPlayerVsObstacles(player, fakeManager(obstacles), APEX_Y, true);
+    expect(hit).not.toBeNull();
+  });
+
+  test('the same jump clears a poop pile, so the barrier result is not just a broken jump', () => {
+    const player = playerMeshAt(0, APEX_Y, 0);
+    const obstacles: ActiveObstacle[] = [
+      { x: 0, y: 0.3, z: 0, lane: 1, spawnId: 2, type: ObstacleType.POOP }
+    ];
+
+    const hit = collision.checkPlayerVsObstacles(player, fakeManager(obstacles), APEX_Y, true);
+    expect(hit).toBeNull();
+  });
+
+  test('a barrier is escapable by lane change: the neighbouring lane stays clear', () => {
+    // Lane pitch is 3 and the barrier half-width is 1.2, so a player one lane
+    // over must not clip it. If this fails the type is undodgeable, not hard.
+    const player = playerMeshAt(0, 0.5, 0);
+    const obstacles: ActiveObstacle[] = [
+      { x: 3, y: 1.5, z: 0, lane: 2, spawnId: 3, type: ObstacleType.BARRIER_HIGH }
+    ];
+
+    const hit = collision.checkPlayerVsObstacles(player, fakeManager(obstacles), 0.5, false);
+    expect(hit).toBeNull();
+  });
+
+  test('running into a barrier on the ground is a hit', () => {
+    const player = playerMeshAt(0, 0.5, 0);
+    const obstacles: ActiveObstacle[] = [
+      { x: 0, y: 1.5, z: 0, lane: 1, spawnId: 4, type: ObstacleType.BARRIER_HIGH }
+    ];
+
+    const hit = collision.checkPlayerVsObstacles(player, fakeManager(obstacles), 0.5, false);
+    expect(hit).not.toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ObstacleManager } from './ObstacleManager';
+import { ObstacleType } from './ObstacleTypes';
 
 // Tolerance is subtracted from the player hitbox (forgiving), never added to
 // the obstacle hitbox (which would just make obstacles bigger). See #70.
@@ -20,6 +21,27 @@ const PLAYER_HALF_DEPTH = 0.8 - COLLISION_TOLERANCE;
 const OBSTACLE_HALF_WIDTH = 0.5;
 const OBSTACLE_HALF_HEIGHT = 0.8;
 const OBSTACLE_HALF_DEPTH = 0.7;
+
+// BARRIER_HIGH is the anti-jump obstacle (#71): its top sits at 3.1, above the
+// 2.6 the player underside reaches at jump apex, so the jump-clears-everything
+// branch below can never fire for it. Values mirror the mesh built in
+// ObstacleManager.createBarrierGroup().
+const BARRIER_HALF_WIDTH = 1.2;
+const BARRIER_HALF_HEIGHT = 1.6;
+const BARRIER_HALF_DEPTH = 0.35;
+
+interface HalfExtents {
+  width: number;
+  height: number;
+  depth: number;
+}
+
+function halfExtentsFor(type: ObstacleType): HalfExtents {
+  if (type === ObstacleType.BARRIER_HIGH) {
+    return { width: BARRIER_HALF_WIDTH, height: BARRIER_HALF_HEIGHT, depth: BARRIER_HALF_DEPTH };
+  }
+  return { width: OBSTACLE_HALF_WIDTH, height: OBSTACLE_HALF_HEIGHT, depth: OBSTACLE_HALF_DEPTH };
+}
 
 export class CollisionSystem {
   private _playerBox: THREE.Box3;
@@ -69,21 +91,23 @@ export class CollisionSystem {
       const previousZ = this._previousZBySpawnId.get(obstacle.spawnId) ?? obstacle.z;
       this._previousZBySpawnId.set(obstacle.spawnId, obstacle.z);
 
-      const zTravelMin = Math.min(previousZ, obstacle.z) - OBSTACLE_HALF_DEPTH;
-      const zTravelMax = Math.max(previousZ, obstacle.z) + OBSTACLE_HALF_DEPTH;
+      const half = halfExtentsFor(obstacle.type);
+
+      const zTravelMin = Math.min(previousZ, obstacle.z) - half.depth;
+      const zTravelMax = Math.max(previousZ, obstacle.z) + half.depth;
 
       this._obstacleBox.min.set(
-        obstacle.x - OBSTACLE_HALF_WIDTH,
-        obstacle.y - OBSTACLE_HALF_HEIGHT,
+        obstacle.x - half.width,
+        obstacle.y - half.height,
         zTravelMin
       );
       this._obstacleBox.max.set(
-        obstacle.x + OBSTACLE_HALF_WIDTH,
-        obstacle.y + OBSTACLE_HALF_HEIGHT,
+        obstacle.x + half.width,
+        obstacle.y + half.height,
         zTravelMax
       );
 
-      const obstacleTop = obstacle.y + OBSTACLE_HALF_HEIGHT;
+      const obstacleTop = obstacle.y + half.height;
       const playerBottom = playerY - PLAYER_HALF_HEIGHT;
 
       if (isJumping && playerBottom > obstacleTop) {
