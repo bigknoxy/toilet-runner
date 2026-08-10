@@ -4,11 +4,23 @@ import { EmojiTextureAtlas } from './visual/EmojiTextureAtlas';
 import { PatternPool, ObstaclePattern } from './ObstaclePattern.js';
 import { PatternSequencer } from './PatternSequencer.js';
 import { DifficultyManager } from './DifficultyManager.js';
+import { ObstacleType } from './ObstacleTypes';
 
 const LANE_WIDTH = 3;
 const SEGMENT_LENGTH = 10;
 const MAX_OBSTACLES = 50;
 const DESPAWN_DISTANCE = 10;
+
+// Barrier dimensions. Jump apex puts the player mesh at GROUND_Y + JUMP_HEIGHT
+// = 0.5 + 2.5 = 3.0, so its underside reaches 2.6. A barrier whose top sits at
+// 3.1 cannot be cleared at any point in the arc — that is the whole point of
+// the type. See #71. Half-width 1.2 keeps it inside its own lane (lane pitch 3),
+// so the adjacent lane stays passable.
+const BARRIER_CENTER_Y = 1.5;
+const BARRIER_HALF_HEIGHT = 1.6;
+const BARRIER_HALF_WIDTH = 1.2;
+const BARRIER_HALF_DEPTH = 0.35;
+const POOP_CENTER_Y = 0.3;
 
 export interface ActiveObstacle {
   x: number;
@@ -16,10 +28,16 @@ export interface ActiveObstacle {
   z: number;
   lane: number;
   spawnId: number;
+  type: ObstacleType;
 }
 
 interface ObstacleInstance {
+  // Both meshes live for the pool's whole lifetime; spawn shows one and hides
+  // the other. Swapping visibility beats allocating a second pool, and keeps
+  // despawn/reset on a single code path.
   mesh: THREE.Group;
+  barrierMesh: THREE.Group;
+  type: ObstacleType;
   active: boolean;
   // Unique per spawn. Identifies an obstacle across frames even though its z
   // changes every frame, so scoring can award a dodge exactly once.
@@ -56,6 +74,10 @@ export class ObstacleManager {
   private _tipGeometry: THREE.SphereGeometry;
   private _eyeGeometry: THREE.SphereGeometry;
   private _smileGeometry: THREE.TorusGeometry;
+  private _barrierGeometry: THREE.BoxGeometry;
+  private _barrierMaterial: THREE.MeshLambertMaterial;
+  private _barrierStripeGeometry: THREE.BoxGeometry;
+  private _barrierStripeMaterial: THREE.MeshLambertMaterial;
 
   constructor(scene: THREE.Scene, trackManager: TrackManager, emojiFacesEnabled: boolean = true) {
     this._scene = scene;
@@ -91,6 +113,21 @@ export class ObstacleManager {
     this._tipGeometry = new THREE.SphereGeometry(0.2, 8, 6);
     this._eyeGeometry = new THREE.SphereGeometry(0.1, 6, 6);
     this._smileGeometry = new THREE.TorusGeometry(0.18, 0.035, 6, 6, Math.PI);
+
+    // Barrier geometry matches the collision half-extents exactly, so what the
+    // player sees is what kills them.
+    this._barrierGeometry = new THREE.BoxGeometry(
+      BARRIER_HALF_WIDTH * 2,
+      BARRIER_HALF_HEIGHT * 2,
+      BARRIER_HALF_DEPTH * 2
+    );
+    this._barrierMaterial = new THREE.MeshLambertMaterial({ color: 0xC23B22 });
+    this._barrierStripeGeometry = new THREE.BoxGeometry(
+      BARRIER_HALF_WIDTH * 2.05,
+      0.3,
+      BARRIER_HALF_DEPTH * 2.05
+    );
+    this._barrierStripeMaterial = new THREE.MeshLambertMaterial({ color: 0xF2E8C9 });
 
     // Initialize pool
     this.initializeObstaclePool();
@@ -157,14 +194,42 @@ export class ObstacleManager {
     return group;
   }
 
+  private createBarrierGroup(): THREE.Group {
+    const group = new THREE.Group();
+
+    const body = new THREE.Mesh(this._barrierGeometry, this._barrierMaterial);
+    body.position.set(0, BARRIER_CENTER_Y, 0);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    group.add(body);
+
+    // Two hazard stripes read as "do not jump this" at a glance, and mark the
+    // top edge so the player can tell it from a poop pile at distance.
+    for (const y of [BARRIER_CENTER_Y + BARRIER_HALF_HEIGHT - 0.2, BARRIER_CENTER_Y - BARRIER_HALF_HEIGHT + 0.2]) {
+      const stripe = new THREE.Mesh(this._barrierStripeGeometry, this._barrierStripeMaterial);
+      stripe.position.set(0, y, 0);
+      stripe.castShadow = false;
+      stripe.receiveShadow = false;
+      group.add(stripe);
+    }
+
+    return group;
+  }
+
   private initializeObstaclePool(): void {
     for (let i = 0; i < MAX_OBSTACLES; i++) {
       const group = this.createObstacleGroup();
       group.visible = false;
       this._scene.add(group);
-      
+
+      const barrier = this.createBarrierGroup();
+      barrier.visible = false;
+      this._scene.add(barrier);
+
       this._obstacles.push({
         mesh: group,
+        barrierMesh: barrier,
+        type: ObstacleType.POOP,
         active: false,
         spawnId: 0,
         z: 0,
@@ -211,18 +276,25 @@ export class ObstacleManager {
       obstacle.wobbleTime += delta * 3;
 
       const laneX = this.getLaneX(obstacle.lane);
-      obstacle.mesh.position.set(laneX, 0, obstacle.z);
 
-      // Apply wobble rotation for "alive" feeling
-      const wobble = Math.sin(obstacle.wobbleTime) * 0.1;
-      obstacle.mesh.rotation.y = obstacle.rotationY + wobble;
+      if (obstacle.type === ObstacleType.BARRIER_HIGH) {
+        // No wobble, no scale jitter: the barrier hitbox is fixed, so its
+        // silhouette must be fixed too.
+        obstacle.barrierMesh.position.set(laneX, 0, obstacle.z);
+      } else {
+        obstacle.mesh.position.set(laneX, 0, obstacle.z);
 
-      // Apply subtle rotation for spinning obstacles
-      if (obstacle.rotationSpeed > 0) {
-        obstacle.mesh.rotation.y += obstacle.rotationSpeed * delta;
+        // Apply wobble rotation for "alive" feeling
+        const wobble = Math.sin(obstacle.wobbleTime) * 0.1;
+        obstacle.mesh.rotation.y = obstacle.rotationY + wobble;
+
+        // Apply subtle rotation for spinning obstacles
+        if (obstacle.rotationSpeed > 0) {
+          obstacle.mesh.rotation.y += obstacle.rotationSpeed * delta;
+        }
+
+        obstacle.mesh.scale.setScalar(obstacle.scale);
       }
-
-      obstacle.mesh.scale.setScalar(obstacle.scale);
 
       if (obstacle.z > DESPAWN_DISTANCE) {
         this.despawnObstacle(obstacle);
@@ -236,7 +308,8 @@ export class ObstacleManager {
     for (const obstacleConfig of pattern.obstacles) {
       this.spawnObstacle(
         obstacleConfig.lane,
-        obstacleConfig.speedMultiplier
+        obstacleConfig.speedMultiplier,
+        obstacleConfig.type ?? ObstacleType.POOP
       );
     }
 
@@ -263,7 +336,11 @@ export class ObstacleManager {
     return [1, 2];
   }
 
-  private spawnObstacle(lane: number, speedMultiplier: number = 1.0): void {
+  private spawnObstacle(
+    lane: number,
+    speedMultiplier: number = 1.0,
+    type: ObstacleType = ObstacleType.POOP
+  ): void {
     const inactiveObstacle = this._obstacles.find(obs => !obs.active);
     if (!inactiveObstacle) return;
 
@@ -275,6 +352,7 @@ export class ObstacleManager {
     const spawnZ = Math.min(runwayZ, floorZ);
 
     inactiveObstacle.active = true;
+    inactiveObstacle.type = type;
     inactiveObstacle.spawnId = this._nextSpawnId++;
     inactiveObstacle.lane = lane;
     inactiveObstacle.z = spawnZ;
@@ -283,6 +361,17 @@ export class ObstacleManager {
     inactiveObstacle.rotationY = (Math.random() - 0.5) * 0.5;
     inactiveObstacle.emojiIndex = Math.floor(Math.random() * 4);
     this._activeCount++;
+
+    const laneX = this.getLaneX(lane);
+
+    if (type === ObstacleType.BARRIER_HIGH) {
+      inactiveObstacle.mesh.visible = false;
+      inactiveObstacle.barrierMesh.position.set(laneX, 0, spawnZ);
+      inactiveObstacle.barrierMesh.visible = true;
+      return;
+    }
+
+    inactiveObstacle.barrierMesh.visible = false;
 
     // Update emoji face UVs on this obstacle's own geometry
     if (this._emojiFacesEnabled) {
@@ -300,7 +389,6 @@ export class ObstacleManager {
       }
     }
 
-    const laneX = this.getLaneX(lane);
     inactiveObstacle.mesh.position.set(laneX, 0, spawnZ);
     inactiveObstacle.mesh.rotation.y = inactiveObstacle.rotationY;
     inactiveObstacle.mesh.scale.setScalar(inactiveObstacle.scale);
@@ -312,7 +400,9 @@ export class ObstacleManager {
     this._activeCount--;
     obstacle.mesh.visible = false;
     obstacle.mesh.position.set(0, -100, 0);
-    
+    obstacle.barrierMesh.visible = false;
+    obstacle.barrierMesh.position.set(0, -100, 0);
+
     // Count as a dodge if the obstacle passed the player
     if (obstacle.z > DESPAWN_DISTANCE) {
       this._dodgedCount++;
@@ -352,10 +442,11 @@ export class ObstacleManager {
       const obstacleX = this.getLaneX(obstacle.lane);
       activeObstacles.push({
         x: obstacleX,
-        y: 0.3,
+        y: obstacle.type === ObstacleType.BARRIER_HIGH ? BARRIER_CENTER_Y : POOP_CENTER_Y,
         z: obstacle.z,
         lane: obstacle.lane,
-        spawnId: obstacle.spawnId
+        spawnId: obstacle.spawnId,
+        type: obstacle.type
       });
     }
 
@@ -378,6 +469,8 @@ export class ObstacleManager {
       this._activeCount--;
       closest.mesh.visible = false;
       closest.mesh.position.set(0, -100, 0);
+      closest.barrierMesh.visible = false;
+      closest.barrierMesh.position.set(0, -100, 0);
     }
   }
 

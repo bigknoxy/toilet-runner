@@ -1,8 +1,12 @@
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'EXTREME';
 
+import { ObstacleType } from './ObstacleTypes';
+
 export interface ObstacleConfig {
   lane: 0 | 1 | 2;
   speedMultiplier: number;
+  /** Defaults to POOP. BARRIER_HIGH cannot be jumped — it must be dodged. */
+  type?: ObstacleType;
 }
 
 export interface ObstaclePattern {
@@ -214,6 +218,29 @@ export class PatternPool {
         obstacles: [{ lane: 1, speedMultiplier: 1.2 }],
         gapToNext: 20,
         guaranteedClearLane: 0
+      },
+      {
+        id: 'MB1',
+        difficulty: 'MEDIUM',
+        // First barrier the player meets: centre lane, both sides open, a full
+        // MEDIUM gap of reaction time. Teaches "this one you cannot jump".
+        obstacles: [{ lane: 1, speedMultiplier: 1.0, type: ObstacleType.BARRIER_HIGH }],
+        gapToNext: 21,
+        guaranteedClearLane: 0
+      },
+      {
+        id: 'MB2',
+        difficulty: 'MEDIUM',
+        obstacles: [{ lane: 0, speedMultiplier: 1.0, type: ObstacleType.BARRIER_HIGH }],
+        gapToNext: 21,
+        guaranteedClearLane: 2
+      },
+      {
+        id: 'MB3',
+        difficulty: 'MEDIUM',
+        obstacles: [{ lane: 2, speedMultiplier: 1.0, type: ObstacleType.BARRIER_HIGH }],
+        gapToNext: 21,
+        guaranteedClearLane: 1
       }
     ];
   }
@@ -306,6 +333,38 @@ export class PatternPool {
         ],
         gapToNext: 16,
         guaranteedClearLane: 1
+      },
+      {
+        id: 'HB1',
+        difficulty: 'HARD',
+        // Barrier plus poop: jumping the poop is not enough, the lane has to
+        // change as well.
+        obstacles: [
+          { lane: 1, speedMultiplier: 1.3, type: ObstacleType.BARRIER_HIGH },
+          { lane: 0, speedMultiplier: 1.3 }
+        ],
+        gapToNext: 18,
+        guaranteedClearLane: 2
+      },
+      {
+        id: 'HB2',
+        difficulty: 'HARD',
+        obstacles: [
+          { lane: 1, speedMultiplier: 1.3, type: ObstacleType.BARRIER_HIGH },
+          { lane: 2, speedMultiplier: 1.3 }
+        ],
+        gapToNext: 18,
+        guaranteedClearLane: 0
+      },
+      {
+        id: 'HB3',
+        difficulty: 'HARD',
+        obstacles: [
+          { lane: 0, speedMultiplier: 1.3, type: ObstacleType.BARRIER_HIGH },
+          { lane: 2, speedMultiplier: 1.4 }
+        ],
+        gapToNext: 18,
+        guaranteedClearLane: 1
       }
     ];
   }
@@ -386,6 +445,37 @@ export class PatternPool {
         difficulty: 'EXTREME',
         obstacles: [{ lane: 2, speedMultiplier: 1.7 }],
         gapToNext: 13,
+        guaranteedClearLane: 1
+      },
+      {
+        id: 'XB1',
+        difficulty: 'EXTREME',
+        // Two barriers: one exact lane survives, and no jump saves it.
+        obstacles: [
+          { lane: 0, speedMultiplier: 1.5, type: ObstacleType.BARRIER_HIGH },
+          { lane: 1, speedMultiplier: 1.5, type: ObstacleType.BARRIER_HIGH }
+        ],
+        gapToNext: 15,
+        guaranteedClearLane: 2
+      },
+      {
+        id: 'XB2',
+        difficulty: 'EXTREME',
+        obstacles: [
+          { lane: 1, speedMultiplier: 1.5, type: ObstacleType.BARRIER_HIGH },
+          { lane: 2, speedMultiplier: 1.5, type: ObstacleType.BARRIER_HIGH }
+        ],
+        gapToNext: 15,
+        guaranteedClearLane: 0
+      },
+      {
+        id: 'XB3',
+        difficulty: 'EXTREME',
+        obstacles: [
+          { lane: 0, speedMultiplier: 1.6, type: ObstacleType.BARRIER_HIGH },
+          { lane: 2, speedMultiplier: 1.6, type: ObstacleType.BARRIER_HIGH }
+        ],
+        gapToNext: 15,
         guaranteedClearLane: 1
       }
     ];

@@ -55,7 +55,9 @@ A humorous 3D endless runner where a toilet paper roll runs forward, avoiding pi
 
 - **Controls:** Arrow keys/WASD on desktop, swipe left/right on mobile
 - **Mechanic:** World moves toward player, not player through world
-- **Obstacles:** InstancedMesh piles of poop (1 draw call for all obstacles)
+- **Obstacles:** pooled piles of poop (jump or dodge) plus `BARRIER_HIGH` walls that are taller
+  than the jump apex, so they can only be dodged by changing lane. See
+  [Obstacle types](docs/architecture.html) for hitbox dimensions.
 - **Performance:** Target 55-60 FPS on mobile devices
 
 ## Architecture
