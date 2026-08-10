@@ -476,7 +476,10 @@
   box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
   touch-action: manipulation;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  z-index: 1000;
+  /* Above .start-screen (9999) and .modal-overlay (9998). At 1000 the start
+     screen painted straight over this button, so the only mute control in the
+     game was unclickable on the first screen the player sees. */
+  z-index: 10001;
 }
 
 .audio-controls:hover {

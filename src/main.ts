@@ -1,7 +1,5 @@
 import '../styles/modals.css';
 
-declare const __APP_VERSION__: string;
-
 import * as THREE from 'three';
 import { SceneManager } from './core/SceneManager';
 import { GameLoop } from './core/GameLoop';

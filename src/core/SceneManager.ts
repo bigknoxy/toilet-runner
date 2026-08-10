@@ -2,6 +2,21 @@ import * as THREE from 'three';
 
 const PIXEL_RATIO_MAX = 2;
 
+/**
+ * Horizon colour, shared by the fog and the clear colour so the far end of the
+ * corridor and the sky behind it are the same shade — any mismatch draws a
+ * visible band across the skyline.
+ *
+ * This used to be 0x87CEEB (sky blue) with a fog range of 30-120. Obstacles
+ * spawn ~90 units from the camera, so they entered the scene already ~80%
+ * fogged into near-white glare and only resolved once they were close, eating
+ * into the reaction window. Darker colour plus a pushed-back near plane so a
+ * brown obstacle reads against the corridor for its whole approach.
+ */
+const HORIZON_COLOR = 0x4a6d8c;
+const FOG_NEAR = 45;
+const FOG_FAR = 130;
+
 export class SceneManager {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
@@ -19,7 +34,7 @@ export class SceneManager {
 
   private createScene(): THREE.Scene {
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x87CEEB, 30, 120);
+    scene.fog = new THREE.Fog(HORIZON_COLOR, FOG_NEAR, FOG_FAR);
     return scene;
   }
 
@@ -37,7 +52,7 @@ export class SceneManager {
       powerPreference: 'high-performance',
       alpha: true
     });
-    renderer.setClearColor(0x87CEEB, 1);
+    renderer.setClearColor(HORIZON_COLOR, 1);
 
     const pixelRatio = Math.min(window.devicePixelRatio, PIXEL_RATIO_MAX);
     renderer.setPixelRatio(pixelRatio);

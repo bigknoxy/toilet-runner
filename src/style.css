@@ -16,7 +16,9 @@ body {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #87CEEB;
+  /* Must track HORIZON_COLOR in SceneManager.ts — the renderer is created with
+     alpha: true, so this shows through wherever the scene does not paint. */
+  background-color: #4a6d8c;
 }
 
 #canvas, #canvas canvas {
