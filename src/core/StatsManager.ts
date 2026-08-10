@@ -14,6 +14,7 @@ export interface PlayerStats {
   currentStreakDate: string;
   selectedSkin: string;
   unlockedSkins: string[];
+  tutorialSeen: boolean;
 }
 
 export interface SessionStats {
@@ -52,7 +53,9 @@ export class StatsManager {
       if (data) {
         const parsed: UnifiedData = JSON.parse(data);
         if (parsed.stats) {
-          return parsed.stats;
+          // Older saved blobs predate the tutorialSeen field - default to
+          // false so it behaves like any other unset boolean field.
+          return { ...parsed.stats, tutorialSeen: parsed.stats.tutorialSeen ?? false };
         }
       }
     } catch (e) {
@@ -76,7 +79,8 @@ export class StatsManager {
       currentStreak: 0,
       currentStreakDate: this._getTodayString(),
       selectedSkin: 'classic',
-      unlockedSkins: ['classic']
+      unlockedSkins: ['classic'],
+      tutorialSeen: false
     };
   }
 
@@ -301,6 +305,24 @@ export class StatsManager {
 
   public getSelectedSkin(): string {
     return this._stats.selectedSkin;
+  }
+
+  /**
+   * True once the player has dismissed the first-run "How to Play" overlay.
+   * Backed by the unified stats blob so the gate survives across sessions
+   * without a dedicated localStorage key.
+   */
+  public hasTutorialBeenSeen(): boolean {
+    return this._stats.tutorialSeen;
+  }
+
+  /** Marks the first-run tutorial as seen. Idempotent - a no-op after the first call. */
+  public markTutorialSeen(): void {
+    if (this._stats.tutorialSeen) {
+      return;
+    }
+    this._stats.tutorialSeen = true;
+    this._save();
   }
 
   public getFormattedPlayTime(): string {

@@ -1849,3 +1849,45 @@ button:focus-visible {
     justify-content: center;
   }
 }
+
+/* Controls / How-to-Play screens */
+.controls-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  background: linear-gradient(135deg, rgba(135, 206, 235, 0.1) 0%, rgba(93, 173, 226, 0.1) 100%);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.control-row .control-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  width: 40px;
+  text-align: center;
+}
+
+.control-row .control-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.control-row .control-text strong {
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.controls-footer {
+  display: flex;
+  justify-content: center;
+}
