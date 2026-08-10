@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { GameState } from '../core/GameState';
 import { CharacterCustomization, CharacterSkin, SkinPattern } from './CharacterCustomization';
 import { JUMP_CONFIG } from '../config/JumpConfig';
+import { damp, easeOutCubic, LANE_SWITCH_DURATION } from './motion';
 
 const LANE_WIDTH = 3;
-const LERP_SPEED = 6;
 const PLAYER_RADIUS = 0.8;
 const PLAYER_Z = -4;
 const GROUND_Y = 0.5;
@@ -23,6 +23,9 @@ export class RunnerController {
   private _currentLaneIndex: number = 0;
   private _currentX: number = 0;
   private _targetX: number = 0;
+  /** X the current lane switch started from, and how far through it we are. */
+  private _laneStartX: number = 0;
+  private _laneTweenTime: number = LANE_SWITCH_DURATION;
   private _speed: number = 0;
   private _wobbleTime: number = 0;
   private _isChangingLanes: boolean = false;
@@ -648,10 +651,7 @@ export class RunnerController {
     if (this._isDead) return;
     if (this._currentLaneIndex > -1) {
       this._currentLaneIndex--;
-      this._targetX = this._currentLaneIndex * LANE_WIDTH;
-      this._isChangingLanes = true;
-      this._scaleX = 0.9;
-      this._scaleY = 1.1;
+      this._startLaneTween();
     }
   }
 
@@ -659,11 +659,22 @@ export class RunnerController {
     if (this._isDead) return;
     if (this._currentLaneIndex < 1) {
       this._currentLaneIndex++;
-      this._targetX = this._currentLaneIndex * LANE_WIDTH;
-      this._isChangingLanes = true;
-      this._scaleX = 0.9;
-      this._scaleY = 1.1;
+      this._startLaneTween();
     }
+  }
+
+  /**
+   * Restarts the lane tween from wherever the runner currently is, so a switch
+   * queued mid-slide still lands a full LANE_SWITCH_DURATION later instead of
+   * snapping.
+   */
+  private _startLaneTween(): void {
+    this._laneStartX = this._currentX;
+    this._targetX = this._currentLaneIndex * LANE_WIDTH;
+    this._laneTweenTime = 0;
+    this._isChangingLanes = true;
+    this._scaleX = 0.9;
+    this._scaleY = 1.1;
   }
 
   jump(): void {
@@ -688,7 +699,15 @@ export class RunnerController {
       return;
     }
 
-    this._currentX = THREE.MathUtils.lerp(this._currentX, this._targetX, LERP_SPEED * delta);
+    // Fixed-duration eased tween, not a per-frame lerp: settle time is the same
+    // at 30Hz and 144Hz, and it is tunable against obstacle spacing.
+    if (this._laneTweenTime < LANE_SWITCH_DURATION) {
+      this._laneTweenTime = Math.min(LANE_SWITCH_DURATION, this._laneTweenTime + delta);
+      const t = easeOutCubic(this._laneTweenTime / LANE_SWITCH_DURATION);
+      this._currentX = this._laneStartX + (this._targetX - this._laneStartX) * t;
+    } else {
+      this._currentX = this._targetX;
+    }
     this._mesh.position.x = this._currentX;
 
     if (this._isGrounded) {
@@ -732,28 +751,26 @@ export class RunnerController {
 
     let yOffset = GROUND_Y;
 
-    if (this._isChangingLanes) {
-      if (Math.abs(this._currentX - this._targetX) < 0.05) {
-        this._isChangingLanes = false;
-      }
+    if (this._isChangingLanes && this._laneTweenTime >= LANE_SWITCH_DURATION) {
+      this._isChangingLanes = false;
     }
 
     const dx = this._targetX - this._currentX;
     if (this._isChangingLanes && Math.abs(dx) > 0.05) {
       const targetTilt = -Math.sign(dx) * TILT_ANGLE;
-      this._tiltAngle = THREE.MathUtils.lerp(this._tiltAngle, targetTilt, TILT_LERP_SPEED * delta);
+      this._tiltAngle = damp(this._tiltAngle, targetTilt, TILT_LERP_SPEED, delta);
     } else {
-      this._tiltAngle = THREE.MathUtils.lerp(this._tiltAngle, 0, TILT_RETURN_SPEED * delta);
+      this._tiltAngle = damp(this._tiltAngle, 0, TILT_RETURN_SPEED, delta);
     }
 
     if (!this._isJumping) {
-      this._scaleY = THREE.MathUtils.lerp(this._scaleY, 1, delta * 8);
-      this._scaleX = THREE.MathUtils.lerp(this._scaleX, 1, delta * 8);
+      this._scaleY = damp(this._scaleY, 1, 8, delta);
+      this._scaleX = damp(this._scaleX, 1, 8, delta);
     } else {
       const jumpProgress = this._velocityY > 0 ? 0.5 : 0.5;
       const stretchFactor = 1 + Math.abs(this._velocityY) * 0.02;
-      this._scaleY = THREE.MathUtils.lerp(this._scaleY, stretchFactor, delta * 5);
-      this._scaleX = THREE.MathUtils.lerp(this._scaleX, 1 / stretchFactor, delta * 5);
+      this._scaleY = damp(this._scaleY, stretchFactor, 5, delta);
+      this._scaleX = damp(this._scaleX, 1 / stretchFactor, 5, delta);
     }
 
     let wobbleZ = 0;
