@@ -21,7 +21,10 @@ export class AnalyticsManager {
   private _sessionStartTime: number = 0;
   private _events: AnalyticsEvent[] = [];
   private _isInitialized: boolean = false;
-  private _gameVersion: string = '1.6.0';
+  // Vite substitutes package.json's version at build time. The literal that
+  // used to live here froze at 1.6.0, so any event tracked before
+  // initialize() runs was tagged with a version the build had long left behind.
+  private _gameVersion: string = __APP_VERSION__;
   
   constructor() {
     this._loadPersistedData();

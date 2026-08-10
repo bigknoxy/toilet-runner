@@ -253,7 +253,8 @@
   position: fixed;
   top: max(16px, env(safe-area-inset-top));
   right: max(16px, env(safe-area-inset-right));
-  z-index: 1000;
+  /* z-index lives in modals.css — that sheet loads later and its
+     .audio-controls rule wins the cascade at equal specificity. */
   width: 48px;
   height: 48px;
   background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
