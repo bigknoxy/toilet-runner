@@ -5,8 +5,8 @@ import { PatternPool, ObstaclePattern } from './ObstaclePattern.js';
 import { PatternSequencer } from './PatternSequencer.js';
 import { DifficultyManager } from './DifficultyManager.js';
 import { ObstacleType } from './ObstacleTypes';
+import { LANE_WIDTH } from './GameConfig';
 
-const LANE_WIDTH = 3;
 const SEGMENT_LENGTH = 10;
 const MAX_OBSTACLES = 50;
 const DESPAWN_DISTANCE = 10;

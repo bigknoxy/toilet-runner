@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { getComboMultiplier, COMBO_THRESHOLDS } from '../src/game/combo';
 import { HUD } from '../src/ui/HUD';
+import { LANE_WIDTH } from '../src/game/GameConfig';
 
 describe('getComboMultiplier', () => {
   test('below the lowest threshold, multiplier is 1', () => {
@@ -95,5 +96,49 @@ describe('HUD combo display', () => {
     const el = document.getElementById('combo-display')!;
     expect(el.classList.contains('combo-break')).toBe(true);
     expect(el.classList.contains('combo-active')).toBe(false);
+  });
+});
+
+describe('near-miss band vs lane geometry (QA defect)', () => {
+  // Mirrors main.ts. The band ships as constants there, so the guard here is
+  // geometric: any band whose upper bound sits below LANE_WIDTH is empty, since
+  // the only lateral distances a settled player can produce are 0, 3, and 6.
+  const NEAR_MISS_MAX_DIST = 3.5;
+  const SAME_LANE_THRESHOLD = 0.5;
+
+  const isNearMiss = (d: number) => d < NEAR_MISS_MAX_DIST && d > SAME_LANE_THRESHOLD;
+
+  test('an adjacent-lane pass counts as a near miss', () => {
+    expect(isNearMiss(LANE_WIDTH)).toBe(true);
+  });
+
+  test('a two-lane-away pass does not', () => {
+    expect(isNearMiss(LANE_WIDTH * 2)).toBe(false);
+  });
+
+  test('a same-lane pass falls to close-pass, not near-miss', () => {
+    expect(isNearMiss(0)).toBe(false);
+    expect(0 <= SAME_LANE_THRESHOLD).toBe(true);
+  });
+});
+
+describe('combo text does not survive a run (QA defect)', () => {
+  test('the break animation clears the text once it finishes', async () => {
+    const hud = new HUD();
+    hud.updateCombo(10, 2);
+    hud.triggerComboBreak();
+    const el = document.getElementById('combo-display')!;
+    // The class flips immediately; the text is cleared when the 500ms
+    // animation ends, so it would otherwise sit on screen through game over.
+    await new Promise(resolve => setTimeout(resolve, 600));
+    expect(el.textContent).toBe('');
+  });
+
+  test('a new streak still renders after a break zeroed the cache', () => {
+    const hud = new HUD();
+    hud.updateCombo(10, 2);
+    hud.triggerComboBreak();
+    hud.updateCombo(1, 1);
+    expect(document.getElementById('combo-display')?.textContent).toBe('1x Combo');
   });
 });

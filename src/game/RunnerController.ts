@@ -3,8 +3,8 @@ import { GameState } from '../core/GameState';
 import { CharacterCustomization, CharacterSkin, SkinPattern } from './CharacterCustomization';
 import { JUMP_CONFIG } from '../config/JumpConfig';
 import { damp, easeOutCubic, LANE_SWITCH_DURATION } from './motion';
+import { LANE_WIDTH } from './GameConfig';
 
-const LANE_WIDTH = 3;
 const PLAYER_RADIUS = 0.8;
 const PLAYER_Z = -4;
 const GROUND_Y = 0.5;

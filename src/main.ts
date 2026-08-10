@@ -52,7 +52,10 @@ const MILESTONE_MESSAGES: Record<number, string> = {
 };
 
 // Near-miss detection constants
-const NEAR_MISS_MAX_DIST = 2.5;
+// Must exceed LANE_WIDTH (3), or the band is empty: a settled adjacent-lane
+// pass is exactly 3.0 units away and a same-lane pass is 0. At 2.5 no dodge
+// ever counted as a near miss, so the combo streak could never start.
+const NEAR_MISS_MAX_DIST = 3.5;
 const SAME_LANE_THRESHOLD = 0.5;
 const NEAR_MISS_BONUS = 10;
 const CLOSE_PASS_BONUS = 5;
@@ -912,6 +915,9 @@ class ToiletRunner {
     this.survivalTime = 0;
     this.lastDodgedCount = 0;
     this.currentStreak = 0;
+    // Clears any streak that survived a non-collision exit (quit to menu),
+    // where triggerComboBreak() never ran.
+    this.hud.updateCombo(0, 1);
     this.challengesNeedUpdate = false;
     this.dustEmissionTimer = 0;
     this._isDying = false;
