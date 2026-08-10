@@ -32,6 +32,7 @@ import { HUD } from './ui/HUD';
 import { TrailRenderer } from './game/TrailRenderer';
 import { SpeedLines } from './game/visual/SpeedLines';
 import { getScoreVerdict } from './game/ScoreVerdict';
+import { getComboMultiplier } from './game/combo';
 import { InstallPrompt } from './ui/InstallPrompt';
 
 const BASE_SPEED = 10;
@@ -445,22 +446,30 @@ class ToiletRunner {
           const lateralDist = Math.abs(obstacle.x - playerPos.x);
           const isNearMiss = lateralDist < NEAR_MISS_MAX_DIST && lateralDist > SAME_LANE_THRESHOLD;
 
-          if (isNearMiss) {
-            // Near miss - adjacent lane dodge (with coin magnet bonus)
-            const magnetBonus = this.shopManager.getCoinMagnetBonus();
-            const nearMissScore = NEAR_MISS_BONUS + magnetBonus;
-            const nearMissCoins = NEAR_MISS_COIN_REWARD + Math.floor(magnetBonus / 2);
-            this.score += nearMissScore;
-            this.dailyChallenges.updateCoinBalance(nearMissCoins);
-            this.ui.showScorePopup(`+${nearMissScore} Score +${nearMissCoins} Coins!`, true);
-            this.runner.triggerSuccessBounce();
-          } else if (lateralDist <= SAME_LANE_THRESHOLD) {
-            // Close pass - same lane, jumped over
-            const magnetBonus = this.shopManager.getCoinMagnetBonus();
-            const closePassCoins = CLOSE_PASS_COIN_REWARD + Math.floor(magnetBonus / 5);
-            this.score += CLOSE_PASS_BONUS;
-            this.dailyChallenges.updateCoinBalance(closePassCoins);
-            this.ui.showScorePopup(`+${CLOSE_PASS_BONUS} Score +${closePassCoins} Coins!`, false);
+          if (isNearMiss || lateralDist <= SAME_LANE_THRESHOLD) {
+            // Every clean dodge (near-miss or close-pass) extends the streak.
+            this.currentStreak++;
+            const comboMultiplier = getComboMultiplier(this.currentStreak);
+            this.hud.updateCombo(this.currentStreak, comboMultiplier);
+
+            if (isNearMiss) {
+              // Near miss - adjacent lane dodge (with coin magnet bonus)
+              const magnetBonus = this.shopManager.getCoinMagnetBonus();
+              const nearMissScore = Math.round((NEAR_MISS_BONUS + magnetBonus) * comboMultiplier);
+              const nearMissCoins = NEAR_MISS_COIN_REWARD + Math.floor(magnetBonus / 2);
+              this.score += nearMissScore;
+              this.dailyChallenges.updateCoinBalance(nearMissCoins);
+              this.ui.showScorePopup(`+${nearMissScore} Score +${nearMissCoins} Coins!`, true);
+              this.runner.triggerSuccessBounce();
+            } else {
+              // Close pass - same lane, jumped over
+              const magnetBonus = this.shopManager.getCoinMagnetBonus();
+              const closePassCoins = CLOSE_PASS_COIN_REWARD + Math.floor(magnetBonus / 5);
+              const closePassScore = Math.round(CLOSE_PASS_BONUS * comboMultiplier);
+              this.score += closePassScore;
+              this.dailyChallenges.updateCoinBalance(closePassCoins);
+              this.ui.showScorePopup(`+${closePassScore} Score +${closePassCoins} Coins!`, false);
+            }
           }
 
           // Trigger celebration effects for both near-miss and close-pass
@@ -598,6 +607,10 @@ class ToiletRunner {
     const obstaclePos = new THREE.Vector3(hitPos.x, hitPos.y, hitPos.z);
     for (let i = 0; i < 8; i++) {
       this.impactParticles.emitImpact(obstaclePos);
+    }
+    if (this.currentStreak > 0) {
+      this.currentStreak = 0;
+      this.hud.triggerComboBreak();
     }
   }
 
