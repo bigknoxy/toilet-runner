@@ -6,6 +6,8 @@
 
 3D endless runner game built with Three.js, TypeScript, Bun, and Vite.
 
+**📐 [Architecture & design diagrams](docs/architecture.html)** — system topology, frame flow, state machine, performance tiers, CI/CD.
+
 ## Quick Start
 
 ```bash
