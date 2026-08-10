@@ -7,7 +7,8 @@ export enum GameState {
   SKINS,
   CHALLENGES,
   STATS,
-  SHOP
+  SHOP,
+  CONTROLS
 }
 
 export type GameStateValue = `${GameState}`;
