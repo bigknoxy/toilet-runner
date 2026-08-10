@@ -86,6 +86,8 @@ class ToiletRunner {
   private score = 0;
   private survivalTime = 0;
   private _pendingHighScore: { score: number; submitted: boolean } = { score: 0, submitted: false };
+  private _gameOverMessage: string = '';
+  private _gameOverIsNewBest: boolean = false;
   private lastDodgedCount = 0;
   private currentStreak = 0;
   private challengesNeedUpdate = false;
@@ -710,6 +712,11 @@ class ToiletRunner {
       this._pendingHighScore = { score: this.score, submitted: false };
     }
 
+    // Capture the previous best before anything writes to it — endSession()
+    // already records the run's score, so reading it later compares the run
+    // against itself and never reports a personal best.
+    const previousBest = this.statsManager.getHighestScore();
+
     const sessionDistance = this.score;
     this.statsManager.endSession({
       score: this.score,
@@ -725,10 +732,6 @@ class ToiletRunner {
       this.survivalTime,
       this.obstacles.getDodgedCount()
     );
-
-    // Capture the previous best before it is overwritten — otherwise every run
-    // compares against itself and always reads as a new personal best.
-    const previousBest = this.statsManager.getHighestScore();
 
     // Update highest score and check for skin unlocks
     this.statsManager.updateHighestScore(Math.floor(this.score));
@@ -750,9 +753,11 @@ class ToiletRunner {
     this.ui.updateStatsFromManager();
     this.ui.updateChallengesDisplay();
 
-    const isNewBest = Math.floor(this.score) > previousBest && this.score > 0;
-    const message = this.getEncouragingMessage(this.score, previousBest, this.survivalTime);
-    this.ui.showGameOverScreen(this.score, message, isNewBest, isHighScore);
+    // Cached so returning from the leaderboard re-renders the same verdict.
+    // Recomputing there would compare the score against the best it just set.
+    this._gameOverIsNewBest = Math.floor(this.score) > previousBest && this.score > 0;
+    this._gameOverMessage = this.getEncouragingMessage(this.score, previousBest, this.survivalTime);
+    this.ui.showGameOverScreen(this.score, this._gameOverMessage, this._gameOverIsNewBest, isHighScore);
   }
 
   private handleNameSubmit(name: string): void {
@@ -792,12 +797,12 @@ class ToiletRunner {
     // returning from the leaderboard lets the same score be written twice.
     const stillPending =
       this._pendingHighScore.score > 0 && !this._pendingHighScore.submitted;
-    const message = this.getEncouragingMessage(
+    this.ui.showGameOverScreen(
       this.score,
-      this.statsManager.getHighestScore(),
-      this.survivalTime
+      this._gameOverMessage,
+      this._gameOverIsNewBest,
+      stillPending
     );
-    this.ui.showGameOverScreen(this.score, message, false, stillPending);
   }
 
   public backToMenu(): void {
@@ -858,13 +863,7 @@ class ToiletRunner {
 
   public restartGame(): void {
     // Auto-submit pending high score if player restarts without entering name
-    if (this._pendingHighScore.score > 0 && !this._pendingHighScore.submitted) {
-      this.leaderboard.addScore(this._pendingHighScore.score, 'Anonymous');
-      this._pendingHighScore = { score: 0, submitted: false };
-      // Update leaderboard display
-      const topScores = this.leaderboard.getTopScores();
-      this.ui.updateLeaderboardFull(topScores);
-    }
+    this.flushPendingHighScore();
     this.startGame();
   }
 

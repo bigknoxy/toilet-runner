@@ -70,6 +70,9 @@ export class InputManager {
 
   private handleKeyboard = (event: KeyboardEvent): void => {
     if (this.isTextEntryTarget(event.target)) return;
+    // Held keys would otherwise auto-repeat: a continuous bunny-hop for jump,
+    // and a pause/resume strobe for P and Escape.
+    if (event.repeat) return;
 
     // Pause is the one binding that must work outside of active play.
     if (event.key === 'p' || event.key === 'P' || event.key === 'Escape') {
@@ -79,8 +82,6 @@ export class InputManager {
     }
 
     if (!this._acceptsGameplayInput()) return;
-    // Held keys would otherwise auto-repeat into a continuous bunny-hop.
-    if (event.repeat) return;
 
     switch (event.key) {
       case 'ArrowLeft':
