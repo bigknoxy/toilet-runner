@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Toilet Runner — Architecture</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1b1b1f; --muted: #5a5a68; --line: #dcdce4;
+    --accent: #1668a8; --code-bg: #f4f4f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14141a; --fg: #e8e8f0; --muted: #a0a0b0; --line: #2c2c38;
+            --accent: #6fb7f0; --code-bg: #1e1e28; }
+  }
+  body { background: var(--bg); color: var(--fg); margin: 0 auto; padding: 2rem 1.25rem 4rem;
+         max-width: 60rem; font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  h1 { font-size: 2rem; margin-bottom: .25rem; }
+  h2 { margin-top: 2.5rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+  a { color: var(--accent); }
+  code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: .5rem .6rem; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); }
+  .sub { color: var(--muted); margin-top: 0; }
+  footer { margin-top: 3rem; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+  pre.mermaid { background: transparent; overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h1>Toilet Runner — Architecture</h1>
+<p class="sub">3D endless runner. Three.js + TypeScript + Vite + Bun, shipped as a static PWA on GitHub Pages.</p>
+<p><a href="../README.md">← README</a></p>
+
+<h2>System topology</h2>
+<pre class="mermaid">
+graph TD
+  subgraph Entry
+    M[main.ts — ToiletRunner]
+  end
+
+  subgraph Core["src/core — engine"]
+    GL[GameLoop<br/>capped delta 0.1s]
+    SM[SceneManager<br/>renderer / scene / camera]
+    PM[PerformanceManager<br/>LOW / MEDIUM / HIGH]
+    GS[GameState enum]
+    LB[LeaderboardManager]
+    ST[StatsManager]
+    AN[AnalyticsManager]
+  end
+
+  subgraph Game["src/game — gameplay"]
+    RC[RunnerController<br/>3 lanes, lerp]
+    TM[TrackManager<br/>InstancedMesh segments]
+    OM[ObstacleManager<br/>pooled InstancedMesh]
+    CS[CollisionSystem<br/>AABB / Box3]
+    DM[DifficultyManager]
+    PS[PatternSequencer]
+    AM[AudioManager<br/>Web Audio synthesis]
+    CM[CameraManager]
+    SV[ScoreVerdict<br/>pure functions]
+    SH[ShopManager]
+    PU[PowerUpManager]
+  end
+
+  subgraph Visual["src/game/visual"]
+    PART[ParticleSystem]
+    POST[PostProcessingManager<br/>bloom / FXAA / vignette]
+    MF[MaterialFactory]
+    ETA[EmojiTextureAtlas]
+    SL[SpeedLines]
+  end
+
+  subgraph UI["src/ui + src/input"]
+    IM[InputManager<br/>keys + touch]
+    HUD[HUD / ScoreAnimator]
+    SCR[ScreenManager<br/>stack navigation]
+    UIM[UIManager<br/>modals, popups]
+  end
+
+  LS[(localStorage<br/>toiletRunner_unifiedData v2)]
+
+  M --> GL --> SM
+  M --> PM --> POST
+  M --> RC & TM & OM & CS & DM & AM & CM
+  DM --> PS --> OM
+  CS --> RC & OM
+  M --> IM --> RC
+  M --> SCR --> UIM
+  M --> HUD
+  M --> SV --> UIM
+  OM --> PART
+  OM --> ETA & MF
+  M --> SL
+  ST --> LS
+  LB --> LS
+  SH --> LS
+  AN --> LS
+  GS -.-> SCR
+</pre>
+
+<h2>World-moves-to-player</h2>
+<p>
+The world translates toward the player on <code>+Z</code>; the runner never leaves the origin.
+This keeps coordinates small and avoids float precision drift on long runs. Track segments
+spawn ahead at roughly <code>-80Z</code> and are recycled once they pass <code>+20Z</code>.
+</p>
+
+<pre class="mermaid">
+graph LR
+  A[Spawn ~ -80Z] -->|world moves +Z| B[Player plane at 0Z]
+  B -->|passes runner| C[Despawn ~ +20Z]
+  C -->|pool recycle| A
+</pre>
+
+<h2>Frame flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+  participant RAF as requestAnimationFrame
+  participant GL as GameLoop
+  participant IN as InputManager
+  participant RC as RunnerController
+  participant WM as Track + Obstacles
+  participant CS as CollisionSystem
+  participant UI as HUD / UIManager
+
+  RAF->>GL: tick(dt)
+  GL->>GL: dt = min(dt, 0.1)
+  IN-->>RC: lane change / jump (event-driven)
+  GL->>RC: update(dt) — lerp toward target lane
+  GL->>WM: advance world +Z, spawn / recycle
+  GL->>CS: intersect runner Box3 vs obstacle Box3
+  alt hit
+    CS-->>UI: game over
+  else clear
+    CS-->>UI: score, near-miss / close-pass bonus
+  end
+  GL->>UI: render HUD, then renderer.render()
+</pre>
+
+<h2>State machine</h2>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> MENU
+  MENU --> PLAYING: PLAY
+  MENU --> SHOP
+  MENU --> SKINS
+  MENU --> CHALLENGES
+  MENU --> STATS
+  SHOP --> MENU
+  SKINS --> MENU
+  CHALLENGES --> MENU
+  STATS --> MENU
+  PLAYING --> PAUSED: P / Escape
+  PAUSED --> PLAYING: P / Escape / Resume
+  PAUSED --> MENU: Home
+  PLAYING --> GAMEOVER: collision
+  GAMEOVER --> PLAYING: Play Again
+  GAMEOVER --> LEADERBOARD: Top Scores
+  LEADERBOARD --> GAMEOVER: Back
+  GAMEOVER --> MENU: Home
+</pre>
+<p>
+<code>ScreenManager</code> owns the stack; <code>GameState</code> (<code>src/core/GameState.ts</code>)
+is the enum. Pause is the one binding that works outside active play, so
+<code>InputManager</code> handles it before the gameplay-input gate.
+</p>
+
+<h2>Performance design</h2>
+<p>
+<code>PerformanceManager</code> runs a short WebGL benchmark on startup and picks a tier.
+Everything downstream (particle budgets, post-processing, pixel ratio) reads from the tier.
+</p>
+<table>
+  <thead><tr><th>Tier</th><th>Selected when</th><th>Collision particles</th><th>Effect particles</th><th>Pixel ratio</th></tr></thead>
+  <tbody>
+    <tr><td>LOW</td><td>bench score &lt; 20, or no/soft WebGL</td><td>15</td><td>0</td><td>1</td></tr>
+    <tr><td>MEDIUM</td><td>score 20–39 (also the default)</td><td>25</td><td>15</td><td>1.5</td></tr>
+    <tr><td>HIGH</td><td>score ≥ 40</td><td>40</td><td>25</td><td>2</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><strong>InstancedMesh</strong> for track segments and obstacles — target &lt;10 draw calls, &lt;10K triangles.</li>
+  <li><strong>Object pooling</strong> for obstacles; no per-frame allocations in hot loops. Reuse
+      <code>THREE.Vector3</code>/<code>Box3</code> instances in <code>update()</code>.</li>
+  <li><strong>MeshLambertMaterial</strong> everywhere, no PBR.</li>
+  <li><strong>Fog</strong> hides pop-in at the spawn distance.</li>
+  <li>Delta time capped at <code>0.1s</code> in <code>GameLoop</code> so a backgrounded tab does not
+      teleport the world on return.</li>
+</ul>
+
+<h2>Data and persistence</h2>
+<p>
+Everything lives client-side in <code>localStorage</code> under
+<code>toiletRunner_unifiedData</code> (schema version 2). Legacy per-feature keys are migrated on load.
+There is no backend, no account, and no network call at runtime.
+</p>
+<table>
+  <thead><tr><th>Owner</th><th>Stores</th></tr></thead>
+  <tbody>
+    <tr><td><code>StatsManager</code></td><td>runs, distance, obstacles dodged, highest score</td></tr>
+    <tr><td><code>LeaderboardManager</code></td><td>top 10 scores with names</td></tr>
+    <tr><td><code>ShopManager</code> / <code>CharacterCustomization</code></td><td>coins, unlocked and equipped skins</td></tr>
+    <tr><td><code>DailyChallenges</code></td><td>today's challenge and progress</td></tr>
+  </tbody>
+</table>
+
+<h2>Security and privacy</h2>
+<table>
+  <thead><tr><th>Control</th><th>Status</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Server-side attack surface</td><td>None</td><td>Static site on GitHub Pages; no API, no auth, no secrets in the bundle.</td></tr>
+    <tr><td>Personal data</td><td>Local only</td><td>The leaderboard name is a free-text string kept in <code>localStorage</code>, never transmitted.</td></tr>
+    <tr><td>Untrusted input rendering</td><td>Text nodes</td><td>Score popups and leaderboard rows are set via <code>textContent</code>, not <code>innerHTML</code>.</td></tr>
+    <tr><td>Third-party runtime code</td><td>None</td><td>Three.js is bundled at build time; no CDN, no analytics beacon, no audio files.</td></tr>
+    <tr><td>Transport</td><td>HTTPS</td><td>GitHub Pages serves the site over TLS.</td></tr>
+    <tr><td>Score integrity</td><td>Not enforced</td><td>Scores are client-authoritative by design — the leaderboard is local, so tampering only affects the tamperer.</td></tr>
+  </tbody>
+</table>
+
+<h2>Build, CI, and release</h2>
+<pre class="mermaid">
+graph LR
+  PR[Pull request] --> CI[ci.yml<br/>typecheck → bun test → build]
+  CI -->|green| MERGE[Merge to main]
+  MERGE --> DEP[deploy.yml<br/>build → GitHub Pages]
+  TAG[Push tag v*] --> REL[release.yml<br/>verify tag == package.json<br/>then GitHub Release]
+</pre>
+<table>
+  <thead><tr><th>Workflow</th><th>Trigger</th><th>Gate</th></tr></thead>
+  <tbody>
+    <tr><td><code>ci.yml</code></td><td>PR to <code>main</code></td><td><code>bun run typecheck</code> + <code>bun run test</code> + <code>bun run build</code></td></tr>
+    <tr><td><code>deploy.yml</code></td><td>push to <code>main</code></td><td>publishes <code>dist/</code> to Pages</td></tr>
+    <tr><td><code>release.yml</code></td><td><code>v*</code> tag</td><td>fails if the tag does not match <code>package.json</code> version</td></tr>
+  </tbody>
+</table>
+<p>
+Vite is configured with <code>base: './'</code> — required for GitHub Pages asset paths. Do not change it.
+</p>
+
+<h2>Observability</h2>
+<p>No server, so observation is browser-side plus CI:</p>
+<table>
+  <thead><tr><th>Question</th><th>How to check</th></tr></thead>
+  <tbody>
+    <tr><td>Does production boot clean?</td><td>Load the site headed (WebGL is unavailable in headless Chromium) and read the console; expect zero errors.</td></tr>
+    <tr><td>Which perf tier did a machine pick?</td><td><code>PerformanceManager.getTier()</code> in the devtools console.</td></tr>
+    <tr><td>What is stored locally?</td><td><code>JSON.parse(localStorage.getItem('toiletRunner_unifiedData'))</code></td></tr>
+    <tr><td>Is a regression covered?</td><td><code>bun run test</code> — the suite targets execution-order and state-lifetime bugs <code>tsc</code> cannot see.</td></tr>
+    <tr><td>Did the deploy land?</td><td><code>gh run list --workflow=deploy.yml</code></td></tr>
+  </tbody>
+</table>
+
+<h2>Test coverage map</h2>
+<table>
+  <thead><tr><th>Test</th><th>Bug class it pins</th></tr></thead>
+  <tbody>
+    <tr><td><code>tests/InputManager.test.ts</code></td><td>OS key auto-repeat strobing pause / bunny-hopping jump; input leaking into the name field</td></tr>
+    <tr><td><code>tests/ScoreVerdict.test.ts</code></td><td><code>previousBest</code> must be read before <code>endSession()</code>, else every personal best is lost</td></tr>
+    <tr><td><code>tests/UIManager.test.ts</code></td><td>score popups piling up unbounded on the body</td></tr>
+    <tr><td><code>tests/SpeedLines.test.ts</code></td><td>scene keeping a live reference to a disposed mesh</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  Last updated 2026-08-10 · <a href="../README.md">README</a> ·
+  <a href="https://bigknoxy.github.io/toilet-runner/">Play</a>
+</footer>
+
+<script type="module">
+  // CDN import keeps this file standalone — open it directly, no build step.
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'default' });
+</script>
+</body>
+</html>
