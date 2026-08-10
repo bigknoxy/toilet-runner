@@ -9,75 +9,90 @@ export interface PatternDistribution {
 
 export interface DifficultyTier {
   name: string;
-  minScore: number;
-  maxScore: number;
+  // Tier bounds are keyed to elapsed survival time (seconds), not score.
+  // Score is inflated by near-miss/close-pass bonuses (see issue #76), which
+  // let a single dodge throw a brand-new player into the hardest tier. Time
+  // is the one clock every run shares regardless of bonus RNG.
+  minTime: number;
+  maxTime: number;
   patternDistribution: PatternDistribution;
   baseObstacleSpeed: number;
   gapBetweenWaves: number;
 }
 
+// Minimum reaction window (seconds) the player must be guaranteed between an
+// obstacle spawning and it reaching them, regardless of world speed.
+// Human reaction time (~0.25s) + the 0.68s lane-switch cost (issue #15)
+// rounds up to ~0.6s as a safety floor per issue #74.
+const MIN_REACTION_SECONDS = 0.6;
+
 export class DifficultyManager {
   private static tiers: DifficultyTier[] = [
     {
       name: 'BEGINNER',
-      minScore: 0,
-      maxScore: 50,
+      minTime: 0,
+      maxTime: 8,
       patternDistribution: { easy: 0.9, medium: 0.1, hard: 0.0, extreme: 0.0 },
       baseObstacleSpeed: 1.0,
       gapBetweenWaves: 28
     },
     {
       name: 'EASY',
-      minScore: 50,
-      maxScore: 120,
+      minTime: 8,
+      maxTime: 20,
       patternDistribution: { easy: 0.65, medium: 0.3, hard: 0.05, extreme: 0.0 },
       baseObstacleSpeed: 1.05,
       gapBetweenWaves: 25
     },
     {
       name: 'INTERMEDIATE',
-      minScore: 120,
-      maxScore: 200,
+      minTime: 20,
+      maxTime: 40,
       patternDistribution: { easy: 0.35, medium: 0.45, hard: 0.2, extreme: 0.0 },
       baseObstacleSpeed: 1.1,
       gapBetweenWaves: 22
     },
     {
       name: 'ADVANCED',
-      minScore: 200,
-      maxScore: 320,
+      minTime: 40,
+      maxTime: 65,
       patternDistribution: { easy: 0.15, medium: 0.4, hard: 0.35, extreme: 0.1 },
       baseObstacleSpeed: 1.15,
       gapBetweenWaves: 19
     },
     {
       name: 'HARD',
-      minScore: 320,
-      maxScore: 450,
+      minTime: 65,
+      maxTime: 95,
       patternDistribution: { easy: 0.05, medium: 0.25, hard: 0.45, extreme: 0.25 },
       baseObstacleSpeed: 1.2,
       gapBetweenWaves: 16
     },
     {
       name: 'EXPERT',
-      minScore: 450,
-      maxScore: 600,
+      minTime: 95,
+      maxTime: 130,
       patternDistribution: { easy: 0.0, medium: 0.15, hard: 0.45, extreme: 0.4 },
       baseObstacleSpeed: 1.25,
       gapBetweenWaves: 13
     },
     {
       name: 'MASTER',
-      minScore: 600,
-      maxScore: Infinity,
+      minTime: 130,
+      maxTime: Infinity,
       patternDistribution: { easy: 0.0, medium: 0.1, hard: 0.4, extreme: 0.5 },
       baseObstacleSpeed: 1.3,
       gapBetweenWaves: 10
     }
   ];
 
-  static getCurrentTier(score: number): DifficultyTier {
-    const tier = this.tiers.find(t => score >= t.minScore && score < t.maxScore);
+  // `elapsedSeconds` is survival time (or distance-travelled-as-seconds, if a
+  // caller prefers distance), never score. Keeping the parameter typed as
+  // `number` (rather than renaming methods) means existing call sites still
+  // compile once they're updated to pass time instead of score — see the
+  // required call-site changes noted in DifficultyManager's consumers.
+  static getCurrentTier(elapsedSeconds: number): DifficultyTier {
+    const tier = this.tiers.find(t => elapsedSeconds >= t.minTime && elapsedSeconds < t.maxTime);
     return tier || this.tiers[this.tiers.length - 1];
   }
 
@@ -91,9 +106,9 @@ export class DifficultyManager {
     return 'EXTREME';
   }
 
-  static getBaseObstacleSpeed(score: number): number {
-    const tier = this.getCurrentTier(score);
-    const progress = this.getTierProgress(score, tier);
+  static getBaseObstacleSpeed(elapsedSeconds: number): number {
+    const tier = this.getCurrentTier(elapsedSeconds);
+    const progress = this.getTierProgress(elapsedSeconds, tier);
     const nextTier = this.getNextTier(tier);
 
     if (!nextTier) return tier.baseObstacleSpeed;
@@ -105,9 +120,9 @@ export class DifficultyManager {
     );
   }
 
-  static getGapBetweenWaves(score: number): number {
-    const tier = this.getCurrentTier(score);
-    const progress = this.getTierProgress(score, tier);
+  static getGapBetweenWaves(elapsedSeconds: number): number {
+    const tier = this.getCurrentTier(elapsedSeconds);
+    const progress = this.getTierProgress(elapsedSeconds, tier);
     const nextTier = this.getNextTier(tier);
 
     if (!nextTier) return tier.gapBetweenWaves;
@@ -121,9 +136,35 @@ export class DifficultyManager {
     return Math.round(gap);
   }
 
-  private static getTierProgress(score: number, tier: DifficultyTier): number {
-    if (tier.maxScore === Infinity) return 0;
-    return (score - tier.minScore) / (tier.maxScore - tier.minScore);
+  // Reaction window math (issue #74):
+  //
+  //   reactionTime = spawnDistance / worldSpeed
+  //
+  // main.ts currently grows worldSpeed unbounded with survival time
+  // (BASE_SPEED + floor(survivalTime) * SPEED_INCREASE), while the spawn
+  // runway in ObstacleManager has been a fixed distance. As speed climbs,
+  // reactionTime shrinks toward zero because the numerator is constant while
+  // the denominator grows. Solving for the distance that keeps reactionTime
+  // pinned at-or-above the floor:
+  //
+  //   spawnDistance >= worldSpeed * MIN_REACTION_SECONDS
+  //
+  // e.g. at speed 10 (game start): 10 * 0.6 = 6 units minimum.
+  //      at speed 70 (uncapped, ~2 minutes in, per issue #74): 70 * 0.6 = 42
+  //      units minimum — the runway must grow linearly with speed, not stay
+  //      fixed at 46, or the floor is violated well before that point.
+  //
+  // Callers should take the max of this floor and whatever base runway the
+  // track geometry already provides, so early-game spacing (which already
+  // exceeds the floor) is left untouched.
+  static getMinSpawnDistance(worldSpeed: number): number {
+    if (worldSpeed <= 0) return 0;
+    return worldSpeed * MIN_REACTION_SECONDS;
+  }
+
+  private static getTierProgress(elapsedSeconds: number, tier: DifficultyTier): number {
+    if (tier.maxTime === Infinity) return 0;
+    return (elapsedSeconds - tier.minTime) / (tier.maxTime - tier.minTime);
   }
 
   private static getNextTier(tier: DifficultyTier): DifficultyTier | undefined {
@@ -135,8 +176,8 @@ export class DifficultyManager {
     return a + (b - a) * Math.max(0, Math.min(1, t));
   }
 
-  static getTierName(score: number): string {
-    return this.getCurrentTier(score).name;
+  static getTierName(elapsedSeconds: number): string {
+    return this.getCurrentTier(elapsedSeconds).name;
   }
 
   static getAllTiers(): DifficultyTier[] {

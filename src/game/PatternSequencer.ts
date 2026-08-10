@@ -9,7 +9,9 @@ export interface PatternSequence {
 
 export class PatternSequencer {
   private static currentSequence: PatternSequence | null = null;
-  private static score: number = 0;
+  /** Elapsed survival time in seconds. Difficulty is keyed to time, not
+   * score, because score is inflated by near-miss bonuses (issue #76). */
+  private static elapsedSeconds: number = 0;
   private static lastSpawnedPattern: ObstaclePattern | null = null;
   private static currentClearLane: 0 | 1 | 2 = 1;
   private static recentDifficulties: Difficulty[] = [];
@@ -18,20 +20,20 @@ export class PatternSequencer {
     // No pre-built sequences needed
   }
 
-  static setScore(newScore: number): void {
-    this.score = newScore;
+  static setElapsedTime(seconds: number): void {
+    this.elapsedSeconds = seconds;
   }
 
   static getNextPattern(): ObstaclePattern {
     if (!this.currentSequence || this.currentSequence.currentIndex >= this.currentSequence.patterns.length) {
-      const tier = DifficultyManager.getCurrentTier(this.score);
+      const tier = DifficultyManager.getCurrentTier(this.elapsedSeconds);
       this.currentSequence = this.buildSequence(tier);
     }
 
     let pattern = this.currentSequence.patterns[this.currentSequence.currentIndex];
 
     // Ensure solvability by checking clear lane continuity
-    const tier = DifficultyManager.getCurrentTier(this.score);
+    const tier = DifficultyManager.getCurrentTier(this.elapsedSeconds);
     pattern = this.ensureSolvablePattern(pattern, tier);
 
     this.currentSequence.currentIndex++;
@@ -222,7 +224,7 @@ export class PatternSequencer {
 
   static reset(): void {
     this.currentSequence = null;
-    this.score = 0;
+    this.elapsedSeconds = 0;
     this.lastSpawnedPattern = null;
     this.currentClearLane = 1;
     this.recentDifficulties = [];
