@@ -13,6 +13,11 @@
 export class HUD {
   private _scoreElement: HTMLElement | null = null;
   private _scoreAnimator: any = null; // ScoreAnimator instance
+  private _comboElement: HTMLElement | null = null;
+  // Cached values so updateCombo() never writes to the DOM unless something
+  // actually changed.
+  private _lastStreak = -1;
+  private _lastMultiplier = -1;
 
   constructor() {
     this._scoreElement = document.getElementById('score-display');
@@ -20,6 +25,10 @@ export class HUD {
       console.warn('[HUD] Score display element not found');
     } else {
       this._applyEnhancedStyling();
+    }
+    this._comboElement = document.getElementById('combo-display');
+    if (!this._comboElement) {
+      console.warn('[HUD] Combo display element not found');
     }
   }
 
@@ -61,6 +70,53 @@ export class HUD {
       // Fallback: direct reset
       this._updateDirectScore(0);
     }
+    this._lastStreak = -1;
+    this._lastMultiplier = -1;
+    if (this._comboElement) {
+      this._comboElement.textContent = '';
+      this._comboElement.classList.remove('combo-break', 'combo-active');
+    }
+  }
+
+  /**
+   * Update the combo streak/multiplier display. No-ops (no DOM write) when
+   * neither value has changed since the last call, to avoid layout work on
+   * every frame.
+   */
+  public updateCombo(streak: number, multiplier: number): void {
+    if (!this._comboElement) return;
+    if (streak === this._lastStreak && multiplier === this._lastMultiplier) return;
+    this._lastStreak = streak;
+    this._lastMultiplier = multiplier;
+
+    if (streak <= 0) {
+      this._comboElement.textContent = '';
+      this._comboElement.classList.remove('combo-active');
+      return;
+    }
+
+    this._comboElement.textContent = multiplier > 1
+      ? `${streak}x Combo ×${multiplier}`
+      : `${streak}x Combo`;
+    this._comboElement.classList.add('combo-active');
+  }
+
+  /**
+   * Play a visible break animation when the streak resets due to a collision.
+   */
+  public triggerComboBreak(): void {
+    if (!this._comboElement) return;
+    this._comboElement.classList.remove('combo-break');
+    // Force reflow to restart animation
+    void this._comboElement.offsetWidth;
+    this._comboElement.classList.add('combo-break');
+    this._comboElement.classList.remove('combo-active');
+
+    setTimeout(() => {
+      if (this._comboElement) {
+        this._comboElement.classList.remove('combo-break');
+      }
+    }, 500);
   }
 
   /**

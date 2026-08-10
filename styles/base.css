@@ -75,6 +75,44 @@ html, body {
   transform: translateX(-50%) scale(1.15);
 }
 
+/* Combo Streak Display */
+#combo-display {
+  position: fixed;
+  top: calc(max(env(safe-area-inset-top, 20px), 20px) + 52px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(14px, 3vw, 18px);
+  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+  color: #ffd166;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+#combo-display.combo-active {
+  opacity: 1;
+}
+
+#combo-display.combo-break {
+  animation: combo-break-flash 0.5s ease;
+}
+
+@keyframes combo-break-flash {
+  0% {
+    opacity: 1;
+    color: #ff5d5d;
+    transform: translateX(-50%) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    color: #ff5d5d;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
 /* Upgrade Indicators HUD */
 .upgrade-hud {
   position: fixed;
