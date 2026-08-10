@@ -10,9 +10,20 @@ const SEGMENT_LENGTH = 10;
 const MAX_OBSTACLES = 50;
 const DESPAWN_DISTANCE = 10;
 
+export interface ActiveObstacle {
+  x: number;
+  y: number;
+  z: number;
+  lane: number;
+  spawnId: number;
+}
+
 interface ObstacleInstance {
   mesh: THREE.Group;
   active: boolean;
+  // Unique per spawn. Identifies an obstacle across frames even though its z
+  // changes every frame, so scoring can award a dodge exactly once.
+  spawnId: number;
   z: number;
   lane: number;
   speedVariation: number;
@@ -28,6 +39,7 @@ export class ObstacleManager {
   private _trackManager: TrackManager;
   private _obstacles: ObstacleInstance[] = [];
   private _activeCount = 0;
+  private _nextSpawnId = 1;
   private _distanceSinceLastSpawn = 0;
   private _nextSpawnGap = 22; // Initial EASY gap
   private _patternsInWave = 0;
@@ -152,6 +164,7 @@ export class ObstacleManager {
       this._obstacles.push({
         mesh: group,
         active: false,
+        spawnId: 0,
         z: 0,
         lane: 0,
         speedVariation: 1,
@@ -254,6 +267,7 @@ export class ObstacleManager {
     const spawnZ = this._trackManager.getFrontZ() - SEGMENT_LENGTH;
 
     inactiveObstacle.active = true;
+    inactiveObstacle.spawnId = this._nextSpawnId++;
     inactiveObstacle.lane = lane;
     inactiveObstacle.z = spawnZ;
     inactiveObstacle.speedVariation = speedMultiplier;
@@ -309,6 +323,7 @@ export class ObstacleManager {
     }
 
     this._activeCount = 0;
+    this._nextSpawnId = 1;
     this._distanceSinceLastSpawn = 0;
     this._nextSpawnGap = 22;
     this._patternsInWave = 0;
@@ -320,18 +335,19 @@ export class ObstacleManager {
     return this._activeCount;
   }
 
-  getActiveObstacles(): Array<{ x: number, y: number, z: number, lane: number }> {
-    const activeObstacles: Array<{ x: number, y: number, z: number, lane: number }> = [];
-    
+  getActiveObstacles(): ActiveObstacle[] {
+    const activeObstacles: ActiveObstacle[] = [];
+
     for (const obstacle of this._obstacles) {
       if (!obstacle.active) continue;
-      
+
       const obstacleX = this.getLaneX(obstacle.lane);
       activeObstacles.push({
         x: obstacleX,
         y: 0.3,
         z: obstacle.z,
-        lane: obstacle.lane
+        lane: obstacle.lane,
+        spawnId: obstacle.spawnId
       });
     }
 

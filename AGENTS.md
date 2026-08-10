@@ -29,7 +29,7 @@ bun run build                  # Production build to dist/
 bun run preview                # Preview built dist/
 
 # Testing
-bun test                      # Run tests (if test framework added)
+bun test                      # Run unit tests (tests/, happy-dom preloaded)
 bun test --watch               # Watch mode for tests
 
 # Deployment
@@ -241,7 +241,6 @@ class InputManager {
 - **State management**: Test GameState transitions
 
 ```bash
-# When test framework added
 bun test                         # Run all tests
 bun test --watch                 # Watch mode
 bun test --coverage              # Generate coverage report
@@ -445,7 +444,7 @@ Use `typescript-gamelogic` agent with `vite-github-pages-deploy` skill.
 
 ### Phase 6: Testing
 Use `typescript-gamelogic` agent for:
-- Unit tests (when framework added)
+- Unit tests in `tests/` (`bun test`, gated in CI)
 - Integration testing on mobile devices
 - Performance profiling
 

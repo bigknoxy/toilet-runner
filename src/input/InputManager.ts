@@ -11,6 +11,7 @@ export class InputManager {
   private _onLaneChange: (direction: -1 | 1) => void;
   private _onJump: () => void;
   private _onPause?: () => void;
+  private _acceptsGameplayInput: () => boolean = () => true;
 
   constructor(
     onLaneChange: (direction: -1 | 1) => void,
@@ -20,6 +21,15 @@ export class InputManager {
     this._onLaneChange = onLaneChange;
     this._onJump = onJump;
     this._onPause = onPause;
+  }
+
+  /**
+   * Gate for movement keys and touch gestures. Without it the runner responds
+   * to WASD typed into the high-score name field and Space queues a jump on
+   * the game-over screen at the same time as it activates the focused button.
+   */
+  setGameplayInputGate(gate: () => boolean): void {
+    this._acceptsGameplayInput = gate;
   }
 
   setup(): void {
@@ -50,7 +60,29 @@ export class InputManager {
     window.removeEventListener('touchend', this.handleTouchEnd);
   }
 
+  /** True while the user is typing into a form control. */
+  private isTextEntryTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el || !el.tagName) return false;
+    const tag = el.tagName.toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
+  }
+
   private handleKeyboard = (event: KeyboardEvent): void => {
+    if (this.isTextEntryTarget(event.target)) return;
+    // Held keys would otherwise auto-repeat: a continuous bunny-hop for jump,
+    // and a pause/resume strobe for P and Escape.
+    if (event.repeat) return;
+
+    // Pause is the one binding that must work outside of active play.
+    if (event.key === 'p' || event.key === 'P' || event.key === 'Escape') {
+      event.preventDefault();
+      if (this._onPause) this._onPause();
+      return;
+    }
+
+    if (!this._acceptsGameplayInput()) return;
+
     switch (event.key) {
       case 'ArrowLeft':
       case 'a':
@@ -68,17 +100,16 @@ export class InputManager {
       case 'W':
         this._onJump();
         break;
-      case 'p':
-      case 'P':
-      case 'Escape':
-        if (this._onPause) {
-          this._onPause();
-        }
-        break;
+      default:
+        return;
     }
+    // Only claim keys the game actually consumed, so Space does not scroll the
+    // page and the arrows do not move focus.
+    event.preventDefault();
   };
 
   private handleTouchStart = (event: TouchEvent): void => {
+    if (!this._acceptsGameplayInput()) return;
     if (event.touches.length > 0) {
       this._touchStartX = event.touches[0].clientX;
       this._touchStartY = event.touches[0].clientY;
@@ -87,6 +118,7 @@ export class InputManager {
   };
 
   private handleTouchEnd = (event: TouchEvent): void => {
+    if (!this._acceptsGameplayInput()) return;
     if (event.changedTouches.length === 0) return;
 
     const now = performance.now();

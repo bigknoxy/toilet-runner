@@ -31,6 +31,7 @@ import { ScoreAnimator } from './ui/ScoreAnimator';
 import { HUD } from './ui/HUD';
 import { TrailRenderer } from './game/TrailRenderer';
 import { SpeedLines } from './game/visual/SpeedLines';
+import { getScoreVerdict } from './game/ScoreVerdict';
 import { InstallPrompt } from './ui/InstallPrompt';
 
 const BASE_SPEED = 10;
@@ -86,10 +87,17 @@ class ToiletRunner {
   private score = 0;
   private survivalTime = 0;
   private _pendingHighScore: { score: number; submitted: boolean } = { score: 0, submitted: false };
+  private _gameOverMessage: string = '';
+  private _gameOverIsNewBest: boolean = false;
   private lastDodgedCount = 0;
   private currentStreak = 0;
   private challengesNeedUpdate = false;
-  private passedObstacles: Set<string> = new Set();
+  private passedObstacles: Set<number> = new Set();
+  // Reused each frame to prune passedObstacles without allocating.
+  private _liveObstacleIds: Set<number> = new Set();
+  private _reducedMotion: boolean =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   private _isDying: boolean = false;
   private _deathTimer: number = 0;
   private readonly _deathDuration = 1.0;
@@ -276,7 +284,7 @@ class ToiletRunner {
 
     // Initialize analytics manager
     this.analyticsManager = new AnalyticsManager();
-    this.analyticsManager.initialize('1.6.0');
+    this.analyticsManager.initialize(__APP_VERSION__);
 
     // Initialize score animator
     this.scoreAnimator = new ScoreAnimator();
@@ -322,6 +330,7 @@ class ToiletRunner {
       this.handleJump.bind(this),
       this.togglePause.bind(this)
     );
+    this.input.setGameplayInputGate(() => this.currentGameState === GameState.PLAYING);
     this.input.setup();
 
     this.ui = new UIManager();
@@ -423,7 +432,10 @@ class ToiletRunner {
       const playerPos = this.runner.getPosition();
 
       for (const obstacle of activeObstacles) {
-        const obstacleId = `${obstacle.x}_${obstacle.z}`;
+        // Keyed on spawnId, not position — z advances every frame, so a
+        // position-derived key never repeats and the dodge would be awarded
+        // once per frame for the whole time the obstacle is behind the player.
+        const obstacleId = obstacle.spawnId;
 
         // If obstacle is behind player and not yet counted as passed
         if (obstacle.z > playerPos.z + 2 && !this.passedObstacles.has(obstacleId)) {
@@ -461,17 +473,16 @@ class ToiletRunner {
         }
       }
 
-      // Clean up passed obstacles that are too far behind
-      // Copy to array first to avoid mutating Set during iteration
-      const toDelete: string[] = [];
-      this.passedObstacles.forEach((obstacleId) => {
-        const [x, z] = obstacleId.split('_').map(Number);
-        if (z > playerPos.z + 10) {
-          toDelete.push(obstacleId);
+      // Drop ids whose obstacle has been recycled back into the pool. Ids are
+      // never reused, so anything not currently active can never match again.
+      this._liveObstacleIds.clear();
+      for (const obstacle of activeObstacles) {
+        this._liveObstacleIds.add(obstacle.spawnId);
+      }
+      for (const id of this.passedObstacles) {
+        if (!this._liveObstacleIds.has(id)) {
+          this.passedObstacles.delete(id);
         }
-      });
-      for (const id of toDelete) {
-        this.passedObstacles.delete(id);
       }
 
       // Update camera follow with player position
@@ -608,18 +619,30 @@ class ToiletRunner {
     this.analyticsManager.trackExtraLifeUsed(Math.floor(this.score));
   }
 
+  /**
+   * Cached so the media query is not re-evaluated inside the collision path.
+   */
+  private prefersReducedMotion(): boolean {
+    return this._reducedMotion;
+  }
+
   private _handleHitEffects(
     hitPos: { x: number; y: number; z: number; lane: number },
     options: { shakeIntensity: number; shakeDuration: number }
   ): void {
     this.audioManager.playCollision();
-    this.cameraShake.shake(options.shakeIntensity, options.shakeDuration);
+    if (!this.prefersReducedMotion()) {
+      this.cameraShake.shake(options.shakeIntensity, options.shakeDuration);
+    }
     this.obstacles.hideObstacle(hitPos.lane, hitPos.z);
   }
 
   private showDeathFlash(): void {
+    // Large-area luminance flashing is a seizure risk, so honour the OS setting.
+    if (this.prefersReducedMotion()) return;
+
     const flash = document.createElement('div');
-    flash.style.cssText = 'position:fixed;inset:0;background:white;opacity:0.6;z-index:9000;pointer-events:none;transition:opacity 0.3s ease-out;';
+    flash.style.cssText = 'position:fixed;inset:0;background:white;opacity:0.35;z-index:9000;pointer-events:none;transition:opacity 0.3s ease-out;';
     document.body.appendChild(flash);
     requestAnimationFrame(() => { flash.style.opacity = '0'; });
     setTimeout(() => flash.remove(), 400);
@@ -690,6 +713,11 @@ class ToiletRunner {
       this._pendingHighScore = { score: this.score, submitted: false };
     }
 
+    // Capture the previous best before anything writes to it — endSession()
+    // already records the run's score, so reading it later compares the run
+    // against itself and never reports a personal best.
+    const previousBest = this.statsManager.getHighestScore();
+
     const sessionDistance = this.score;
     this.statsManager.endSession({
       score: this.score,
@@ -726,13 +754,19 @@ class ToiletRunner {
     this.ui.updateStatsFromManager();
     this.ui.updateChallengesDisplay();
 
-    const highScore = this.statsManager.getHighestScore();
-    const isNewBest = Math.floor(this.score) >= highScore && this.score > 0;
-    const message = this.getEncouragingMessage(this.score, highScore, this.survivalTime);
-    this.ui.showGameOverScreen(this.score, message, isNewBest, isHighScore);
+    // Cached so returning from the leaderboard re-renders the same verdict.
+    // Recomputing there would compare the score against the best it just set.
+    const verdict = getScoreVerdict(this.score, previousBest, this.survivalTime);
+    this._gameOverIsNewBest = verdict.isNewBest;
+    this._gameOverMessage = verdict.message;
+    this.ui.showGameOverScreen(this.score, this._gameOverMessage, this._gameOverIsNewBest, isHighScore);
   }
 
   private handleNameSubmit(name: string): void {
+    // Guard against a second submission of the same score, which is reachable
+    // via submit -> view leaderboard -> back -> submit.
+    if (this._pendingHighScore.submitted || this._pendingHighScore.score <= 0) return;
+
     // Add score with player name
     this.leaderboard.addScore(this._pendingHighScore.score, name);
 
@@ -744,15 +778,6 @@ class ToiletRunner {
     this.ui.updateLeaderboardFull(topScores);
   }
 
-  private getEncouragingMessage(score: number, highScore: number, time: number): string {
-    if (score >= highScore && score > 0) return 'New Personal Best!';
-    if (score > highScore * 0.9 && highScore > 0) return 'So close to your record!';
-    if (time > 60) return 'Great endurance!';
-    if (score > 200) return 'Impressive run!';
-    if (score > 50) return 'Nice dodging!';
-    return 'Keep practicing!';
-  }
-
   public showLeaderboard(): void {
     this.currentGameState = GameState.LEADERBOARD;
     this.ui.setGameState(this.currentGameState);
@@ -760,10 +785,21 @@ class ToiletRunner {
 
   public backToGameOver(): void {
     this.currentGameState = GameState.GAMEOVER;
-    this.ui.showGameOverScreen(this.score);
+    this.ui.setGameState(this.currentGameState);
+    // Only offer name entry again if the score is still unsubmitted, otherwise
+    // returning from the leaderboard lets the same score be written twice.
+    const stillPending =
+      this._pendingHighScore.score > 0 && !this._pendingHighScore.submitted;
+    this.ui.showGameOverScreen(
+      this.score,
+      this._gameOverMessage,
+      this._gameOverIsNewBest,
+      stillPending
+    );
   }
 
   public backToMenu(): void {
+    this.flushPendingHighScore();
     this.currentGameState = GameState.MENU;
     this.ui.setGameState(this.currentGameState);
     this.ui.showStartScreen();
@@ -805,15 +841,22 @@ class ToiletRunner {
     this.ui.updateShopDisplay(upgrades, coinBalance);
   }
 
-  public restartGame(): void {
-    // Auto-submit pending high score if player restarts without entering name
+  /**
+   * Commit an unsubmitted high score as "Anonymous". Called on every path that
+   * leaves the game-over screen, so a placement is never silently discarded and
+   * never survives to be submitted during the next run.
+   */
+  private flushPendingHighScore(): void {
     if (this._pendingHighScore.score > 0 && !this._pendingHighScore.submitted) {
       this.leaderboard.addScore(this._pendingHighScore.score, 'Anonymous');
-      this._pendingHighScore = { score: 0, submitted: false };
-      // Update leaderboard display
-      const topScores = this.leaderboard.getTopScores();
-      this.ui.updateLeaderboardFull(topScores);
+      this.ui.updateLeaderboardFull(this.leaderboard.getTopScores());
     }
+    this._pendingHighScore = { score: 0, submitted: false };
+  }
+
+  public restartGame(): void {
+    // Auto-submit pending high score if player restarts without entering name
+    this.flushPendingHighScore();
     this.startGame();
   }
 

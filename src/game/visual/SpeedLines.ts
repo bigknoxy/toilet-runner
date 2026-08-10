@@ -10,8 +10,10 @@ export class SpeedLines {
   private _positions: Float32Array;
   private _tempMatrix: THREE.Matrix4;
   private _material: THREE.MeshBasicMaterial;
+  private _scene: THREE.Scene;
 
   constructor(scene: THREE.Scene) {
+    this._scene = scene;
     this._tempMatrix = new THREE.Matrix4();
 
     const geometry = new THREE.PlaneGeometry(0.04, 3);
@@ -86,6 +88,10 @@ export class SpeedLines {
   }
 
   dispose(): void {
+    // Detach before disposing, otherwise the scene keeps a live reference to a
+    // mesh whose GPU buffers are gone.
+    this._scene.remove(this._mesh);
+    this._mesh.dispose();
     this._mesh.geometry.dispose();
     this._material.dispose();
   }

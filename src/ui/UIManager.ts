@@ -2,6 +2,10 @@ import { GameState } from '../core/GameState';
 import { DailyChallengeSystem } from '../game/DailyChallenges';
 import { StatsManager, PlayerStats } from '../core/StatsManager';
 
+/** Matches the 0.9s score-popup CSS animation in styles/modals.css. */
+const SCORE_POPUP_LIFETIME_MS = 900;
+const MAX_SCORE_POPUPS = 3;
+
 export class UIManager {
   private _startScreen: HTMLElement | null = null;
   private _pauseScreen: HTMLElement | null = null;
@@ -145,12 +149,18 @@ export class UIManager {
       });
     }
 
-    // Global keyboard shortcuts based on current state
+    // Global keyboard shortcuts based on current state.
+    // Escape while PAUSED is deliberately absent: InputManager owns that key,
+    // and handling it here as well made the two calls cancel each other out.
     document.addEventListener('keydown', (e) => {
+      // Never steal keys from the high-score name field — a space there used to
+      // restart the run, making two-word names impossible.
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
+
       if (e.key === 'Escape') {
-        if (this.currentGameState === GameState.PAUSED) {
-          if (this._onResume) this._onResume();
-        } else if (this.currentGameState === GameState.GAMEOVER) {
+        if (this.currentGameState === GameState.GAMEOVER) {
           if (this._onRestart) this._onRestart();
         } else if (this.currentGameState === GameState.LEADERBOARD) {
           if (this._onBackToGameOver) this._onBackToGameOver();
@@ -353,6 +363,7 @@ export class UIManager {
   private _countUpRaf: number = 0;
 
   public showGameOverScreen(finalScore: number, message?: string, isNewBest?: boolean, isHighScore?: boolean): void {
+    this.announce(`Game over. Score ${Math.floor(finalScore)}.${message ? ' ' + message : ''}`);
     this.hideAllScreens();
     if (this._gameOverScreen && this._finalScore && this._overlay) {
       this._overlay.classList.remove('hidden');
@@ -1015,12 +1026,35 @@ export class UIManager {
 
   private _reachedMilestones: Set<number> = new Set();
 
+  private _livePopups: HTMLElement[] = [];
+
+  /**
+   * Near-miss and close-pass bonuses can fire several times a second, so the
+   * live popups are capped: the oldest is retired as soon as the cap is hit
+   * rather than letting an unbounded stack of divs pile up on the body.
+   */
   public showScorePopup(text: string, isNearMiss: boolean): void {
+    while (this._livePopups.length >= MAX_SCORE_POPUPS) {
+      const oldest = this._livePopups.shift();
+      oldest?.remove();
+    }
+
     const popup = document.createElement('div');
     popup.className = `score-popup${isNearMiss ? ' near-miss' : ''}`;
     popup.textContent = text;
     document.body.appendChild(popup);
-    setTimeout(() => popup.remove(), 900);
+    this._livePopups.push(popup);
+
+    setTimeout(() => {
+      const index = this._livePopups.indexOf(popup);
+      if (index !== -1) this._livePopups.splice(index, 1);
+      popup.remove();
+    }, SCORE_POPUP_LIFETIME_MS);
+  }
+
+  /** Live popup count, for tests. */
+  public getLivePopupCount(): number {
+    return this._livePopups.length;
   }
 
   public showStreakNotification(streak: number): void {
@@ -1039,7 +1073,20 @@ export class UIManager {
     }, 3000);
   }
 
+  /**
+   * Announce to screen readers. The score HUD updates every frame and cannot be
+   * a live region, so anything worth hearing is routed through here instead.
+   */
+  public announce(message: string): void {
+    const region = document.getElementById('sr-announcer');
+    if (!region) return;
+    // Reassigning identical text does not re-announce, so clear first.
+    region.textContent = '';
+    requestAnimationFrame(() => { region.textContent = message; });
+  }
+
   public showMilestonePopup(message: string): void {
+    this.announce(message);
     const popup = document.createElement('div');
     popup.className = 'milestone-popup';
     popup.textContent = message;
