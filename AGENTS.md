@@ -29,8 +29,11 @@ bun run build                  # Production build to dist/
 bun run preview                # Preview built dist/
 
 # Testing
-bun test                      # Run unit tests (tests/, happy-dom preloaded)
+bun run test                   # Run unit tests (tests/, happy-dom preloaded)
 bun test --watch               # Watch mode for tests
+
+# Typecheck
+bun run typecheck              # tsc --noEmit
 
 # Deployment
 bun run deploy                  # Deploy to GitHub Pages (via gh-pages)
@@ -213,7 +216,7 @@ function checkCollision(): boolean {
 ## Input Handling
 
 - **Cross-platform**: Support both keyboard and touch/swipe
-- **Threshold-based**: Swipe detection with 50px threshold
+- **Threshold-based**: `SWIPE_THRESHOLD = 30` horizontal / `SWIPE_VERTICAL_THRESHOLD = 25` vertical (`src/input/InputManager.ts`)
 - **Debouncing**: Prevent rapid state changes
 - **No scroll interference**: Use touchstart/touchend, not touchmove
 
@@ -233,18 +236,22 @@ class InputManager {
 
 ## Testing Strategy
 
-### Unit Tests (To Add)
+### Unit Tests
 
-- **Game systems**: Test RunnerController, TrackManager in isolation
-- **Collision detection**: Test AABB logic with known edge cases
-- **Input handling**: Mock keyboard and touch events
-- **State management**: Test GameState transitions
+Tests live in `tests/` and run on Bun's built-in runner. `bunfig.toml` preloads
+`tests/setup.ts`, which registers happy-dom so `window`, `document`, and
+`localStorage` exist. CI runs `bun run typecheck`, `bun run test`, and
+`bun run build` on every PR.
 
 ```bash
-bun test                         # Run all tests
-bun test --watch                 # Watch mode
-bun test --coverage              # Generate coverage report
+bun run test                                   # all tests
+bun test tests/InputManager.test.ts            # one file
+bun test -t "held jump does not bunny-hop"     # one case
 ```
+
+`src/test/TrackManager.test.ts` is a leftover hand-rolled `console.log` harness
+exporting `testTrackManager()`. It is not part of the `tests/` suite and no
+command runs it.
 
 ### Integration Testing
 
@@ -294,7 +301,7 @@ function updateTrack(delta: number): void {
 ### Obstacle Mechanics
 
 - **Poop obstacles**: Cone geometry (ConeGeometry(0.6, 0.8, 8))
-- **InstancedMesh**: Single draw call for all obstacles
+- **Not instanced (yet)**: `createObstacleGroup` (`src/game/ObstacleManager.ts`) builds a `THREE.Group` of 4-6 individual `Mesh` objects, and all 50 pooled groups are added to the scene at construction. Instancing them is a target, not the current state
 - **Spawn patterns**: Single, double, or triple obstacles per segment
 - **Difficulty scaling**: Spawn rate and speed increase over score
 
@@ -491,7 +498,7 @@ Before every release, you MUST:
 ## Performance Targets
 
 - **FPS**: 55-60 on mid-range mobile (2020+ devices)
-- **Draw calls**: <10 total (1 player, 1-2 ground, 1 obstacles, UI)
+- **Draw calls**: <10 total (1 player, 1-2 ground, 1 obstacles, UI) — target, not current. Obstacles alone are ~60-150 today
 - **Triangles**: <10,000 (low-poly models, simple materials)
 - **Memory**: Stable, no growth over time (object pooling, no per-frame allocations)
 
