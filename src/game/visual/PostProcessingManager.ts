@@ -207,8 +207,14 @@ const VignetteShader = {
     void main() {
       vec4 color = texture2D(tDiffuse, vUv);
       float dist = distance(vUv, vec2(0.5, 0.5));
-      float vignette = smoothstep(offset, offset - darkness, dist);
-      color.rgb *= vignette;
+      // Falloff shape and falloff strength are separate. This used to be
+      // smoothstep(offset, offset - darkness, dist), where 'darkness' was the
+      // WIDTH of the transition band, so turning it down sharpened the edge
+      // instead of lightening it and the corners clamped to pure black either
+      // way. Shape is now a fixed band from offset outward; darkness is a 0..1
+      // intensity, so 0.1 costs the corners 10% of their brightness.
+      float shape = smoothstep(offset, offset + 0.35, dist);
+      color.rgb *= 1.0 - shape * clamp(darkness, 0.0, 1.0);
       gl_FragColor = color;
     }
   `
