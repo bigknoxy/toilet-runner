@@ -15,14 +15,17 @@
      app. These are the intro gradient's own stops, so a modal now looks like a
      panel of the game rather than a browser dialog sitting on top of it.
 
-     Contrast against --bg-modal-solid (#1B2340): --text-primary 13.9:1,
+     Contrast against the gradient's midpoint (#16213E): --text-primary 13.9:1,
      --text-secondary 7.2:1. Both clear WCAG AA for body text. */
   --text-primary: #F2F4FA;
   --text-secondary: #A8B2CC;
   --bg-modal: linear-gradient(135deg, #1A1A2E 0%, #16213E 55%, #0F3460 100%);
-  /* Flat equivalent for the places that need a single colour: gradients cannot
-     be used for border-color, and a translucent fill over a gradient banded. */
-  --bg-modal-solid: #1B2340;
+  /* Text for the handful of surfaces that stayed light after the modal went
+     dark: the gold/silver/bronze leaderboard rows and the gold buy button.
+     Those used --text-primary back when it was near-black, so flipping it to
+     near-white made them white-on-gold. They need their own token, not the
+     modal's. 15.4:1 on #FFD700, 12.6:1 on #D4A574. */
+  --ink-on-light: #14182B;
   --bg-overlay: rgba(6, 9, 20, 0.78);
   --border-color: rgba(255, 255, 255, 0.14);
   /* Hairline fills (progress troughs, dividers) that used to be a wash of black
@@ -208,6 +211,16 @@
     max-width: 480px;
     width: auto;
     margin: var(--spacing-lg);
+  }
+
+  /* Modals are flex items of the overlay, so width: auto shrink-to-fits them to
+     their content. The skins list settled at 375px, which fits two 110px cards
+     and wraps every name onto two lines if you squeeze in a third. It is the
+     one modal whose job is a grid, so it claims a fixed width wide enough for
+     four columns instead of letting the narrowest card decide. */
+  #skin-screen {
+    width: 100%;
+    max-width: 560px;
   }
 }
 
@@ -653,17 +666,19 @@
 
 .leaderboard-item:nth-child(1) {
   background: linear-gradient(135deg, #FFD700 0%, #FFC107 100%);
-  color: var(--text-primary);
+  color: var(--ink-on-light);
   font-weight: bold;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 .leaderboard-item:nth-child(2) {
   background: linear-gradient(135deg, #E8E8E8 0%, #D0D0D0 100%);
+  color: var(--ink-on-light);
 }
 
 .leaderboard-item:nth-child(3) {
   background: linear-gradient(135deg, #D4A574 0%, #C4956A 100%);
+  color: var(--ink-on-light);
 }
 
 .leaderboard-item:nth-child(n+4) {
@@ -1820,7 +1835,7 @@ button:focus-visible {
 
 .shop-buy-btn {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-  color: var(--text-primary);
+  color: var(--ink-on-light);
   border: none;
   border-radius: var(--radius-sm);
   padding: var(--spacing-sm) var(--spacing-md);
@@ -1837,7 +1852,10 @@ button:focus-visible {
 }
 
 .shop-buy-btn:disabled {
-  background: #ccc;
+  /* #ccc read brighter than the enabled gold once the modal went dark, so the
+     unaffordable item looked like the actionable one. */
+  background: var(--well);
+  color: var(--text-secondary);
   cursor: not-allowed;
   opacity: 0.7;
 }
