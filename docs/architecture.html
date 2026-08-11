@@ -192,17 +192,60 @@ is the enum. Pause is the one binding that works outside active play, so
 
 <h2>Performance design</h2>
 <p>
-<code>PerformanceManager</code> runs a short WebGL benchmark on startup and picks a tier.
+<code>PerformanceManager</code> measures the device at startup and picks a tier.
 Everything downstream (particle budgets, post-processing, pixel ratio) reads from the tier.
+There is no user-agent sniffing anywhere in the path: a phone is graded on what it
+renders, not on what its UA string says it is.
+</p>
+<p>
+The boot benchmark draws a rotating <code>TorusKnot</code> at a fixed 512×512 with the same
+<code>MeshLambertMaterial</code> + <code>HemisphereLight</code> setup the game shades with. Warm-up
+frames run first, then a timed loop, with <code>gl.readPixels()</code> before and after to force
+the GPU to drain — without that sync point the loop only measures how fast JS can queue
+commands, not how fast the GPU executes them. The resulting FPS is normalised by the
+device's real pixel load (<code>viewport × devicePixelRatio²</code>) to estimate native FPS,
+the same approach <code>detect-gpu</code> uses. The whole benchmark is budgeted at 250&nbsp;ms.
 </p>
 <table>
   <thead><tr><th>Tier</th><th>Selected when</th><th>Collision particles</th><th>Effect particles</th><th>Pixel ratio</th></tr></thead>
   <tbody>
-    <tr><td>LOW</td><td>bench score &lt; 20, or no/soft WebGL</td><td>15</td><td>0</td><td>1</td></tr>
-    <tr><td>MEDIUM</td><td>score 20–39 (also the default)</td><td>25</td><td>15</td><td>1.5</td></tr>
-    <tr><td>HIGH</td><td>score ≥ 40</td><td>40</td><td>25</td><td>2</td></tr>
+    <tr><td>LOW</td><td>est. native FPS &lt; 30, or no WebGL / software renderer</td><td>15</td><td>0</td><td>1</td></tr>
+    <tr><td>MEDIUM</td><td>30–54</td><td>25</td><td>15</td><td>1.5</td></tr>
+    <tr><td>HIGH</td><td>≥ 55</td><td>40</td><td>25</td><td>2</td></tr>
   </tbody>
 </table>
+<p>
+<code>deviceMemory &lt; 2</code> caps a HIGH verdict at MEDIUM. Players can override the whole
+thing: <code>PerformanceManager.setPreference()</code> pins a tier and disables adaptation,
+persisted under <code>toiletRunner_quality</code> (a key separate from the unified stats blob,
+because a tier has to be chosen before <code>StatsManager</code> has loaded).
+</p>
+
+<h3>Adaptive quality</h3>
+<p>
+A boot benchmark can only guess. A phone that benchmarks well still throttles when it warms
+up, and a desktop is fine until another tab wants the GPU. <code>AdaptiveQuality</code> watches
+the frames actually delivered during <code>PLAYING</code> and corrects the guess at runtime.
+Hysteresis keeps it from oscillating:
+</p>
+<table>
+  <thead><tr><th>Transition</th><th>Threshold</th><th>Window</th></tr></thead>
+  <tbody>
+    <tr><td>Downgrade</td><td>avg &lt; 45 FPS</td><td>3 s</td></tr>
+    <tr><td>Upgrade</td><td>avg &gt; 58 FPS</td><td>8 s</td></tr>
+    <tr><td>Cooldown after any change</td><td>—</td><td>5 s</td></tr>
+  </tbody>
+</table>
+<p>
+Upgrades need a longer look than downgrades: being briefly too conservative costs some
+sparkle, being briefly too ambitious costs frames mid-run, which is what a player actually
+notices in a reaction-time game. The boot verdict is the ceiling — adaptation can recover
+ground it gave up but never promote a device past what it measured. Frames longer than
+0.25&nbsp;s (tab-switch, GC pause) are discarded rather than counted, so one hitch cannot drop
+everyone's quality. Telemetry is suspended outside gameplay so an idle menu is not mistaken
+for headroom. A downgrade tears down post-processing; an upgrade does not rebuild it, since
+recompiling shaders would stall exactly the frames the upgrade was meant to reward.
+</p>
 <ul>
   <li><strong>InstancedMesh</strong> for track segments and obstacles — target &lt;10 draw calls, &lt;10K triangles.</li>
   <li><strong>Object pooling</strong> for obstacles; no per-frame allocations in hot loops. Reuse
@@ -287,7 +330,7 @@ Vite is configured with <code>base: './'</code> — required for GitHub Pages as
 </table>
 
 <footer>
-  Last updated 2026-08-10 · <a href="../README.md">README</a> ·
+  Last updated 2026-08-11 · <a href="../README.md">README</a> ·
   <a href="https://bigknoxy.github.io/toilet-runner/">Play</a>
 </footer>
 

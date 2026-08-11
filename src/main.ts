@@ -5,7 +5,7 @@ import { SceneManager } from './core/SceneManager';
 import { GameLoop } from './core/GameLoop';
 import { GameState } from './core/GameState';
 import { LeaderboardManager } from './core/LeaderboardManager';
-import { PerformanceManager, PerformanceTier } from './core/PerformanceManager';
+import { PerformanceManager, PerformanceTier, PerformanceConfig } from './core/PerformanceManager';
 import { RunnerController } from './game/RunnerController';
 import { TrackManager } from './game/TrackManager';
 import { ObstacleManager } from './game/ObstacleManager';
@@ -63,7 +63,7 @@ const CLOSE_PASS_COIN_REWARD = 2;
 class ToiletRunner {
   private sceneManager!: SceneManager;
   private gameLoop!: GameLoop;
-  private performanceConfig: any;
+  private performanceConfig!: PerformanceConfig;
 
   private runner!: RunnerController;
   private track!: TrackManager;
@@ -126,6 +126,8 @@ class ToiletRunner {
       this.gameLoop = new GameLoop();
 
       this.performanceConfig = await PerformanceManager.initialize();
+      this.sceneManager.setPixelRatio(this.performanceConfig.pixelRatio);
+      PerformanceManager.setOnTierChange((config) => this.applyTierChange(config));
 
       this.setupGameLogic();
       this.setupUIAndInput();
@@ -265,6 +267,8 @@ class ToiletRunner {
   private setupPostProcessing(): void {
     if (!this.performanceConfig.postProcessing) return;
 
+    const isHigh = this.performanceConfig.tier === PerformanceTier.HIGH;
+
     this.postProcessing.initialize({
       enabled: true,
       bloom: {
@@ -272,14 +276,36 @@ class ToiletRunner {
         threshold: 0.9,
         radius: 0.3
       },
+      // Bloom at half size on MEDIUM keeps the glow without paying full fill
+      // rate for it. Both this and the vignette used to key off the user agent,
+      // which is why a fast phone looked flatter than a slow laptop.
+      bloomResolutionScale: isHigh ? 1 : 0.5,
       fxaa: true,
-      vignette: {
-        offset: 0.5,
-        darkness: 0.3
-      }
+      vignette: isHigh ? { offset: 0.5, darkness: 0.3 } : undefined
     });
 
     this.sceneManager.setPostProcessing(this.postProcessing);
+  }
+
+  /**
+   * Apply a tier change without restarting the run.
+   *
+   * Only the knobs that are cheap and safe to change mid-frame move here.
+   * Particle budgets, material quality and emoji faces are baked in when their
+   * systems are constructed, so they keep whatever the boot tier chose; tearing
+   * those down mid-run would cost more frames than it saves. Post-processing is
+   * dropped on the way down but not rebuilt on the way up, because rebuilding
+   * the composer compiles shaders and would stall the very frames the upgrade
+   * was meant to reward.
+   */
+  private applyTierChange(config: PerformanceConfig): void {
+    this.performanceConfig = config;
+    this.sceneManager.setPixelRatio(config.pixelRatio);
+
+    if (!config.postProcessing && this.postProcessing.isEnabled()) {
+      this.postProcessing.dispose();
+      this.sceneManager.setPostProcessing(null);
+    }
   }
 
   private setupGameLogic(): void {
@@ -388,7 +414,14 @@ class ToiletRunner {
   }
 
   private update(delta: number): void {
-    PerformanceManager.updateFPS(delta);
+    // Only gameplay frames are evidence. A paused or menu frame renders almost
+    // nothing, so counting those would read as headroom and talk the adaptive
+    // watchdog into a tier the actual run cannot hold.
+    if (this.currentGameState === GameState.PLAYING) {
+      PerformanceManager.updateFPS(delta);
+    } else {
+      PerformanceManager.suspendAdaptation();
+    }
 
     if (this.currentGameState === GameState.PLAYING) {
       // Death slow-motion sequence
