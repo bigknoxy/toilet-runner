@@ -28,6 +28,23 @@ export class PostProcessingManager {
   private vignettePass: ShaderPass | null = null;
   private outputPass: OutputPass | null = null;
 
+  /**
+   * Resting vignette strength, as configured. The pass is driven to
+   * `_vignetteBase + _vignettePulse` every frame.
+   *
+   * The vignette used to sit at a constant heavy value, darkening roughly a
+   * quarter of the screen on every frame of every run. In a game where
+   * obstacles have to be read at the edge of vision while approaching, that is
+   * a permanent tax on the reaction window and it buys nothing, because an
+   * effect that never changes stops being seen at all. Held low as ambient
+   * framing, it now spikes on the events worth punctuating.
+   */
+  private _vignetteBase = 0;
+  private _vignettePulse = 0;
+
+  /** Seconds for a pulse to fall back to the resting value. */
+  private static readonly PULSE_DECAY = 0.45;
+
   constructor(
     private renderer: THREE.WebGLRenderer,
     private scene: THREE.Scene,
@@ -98,7 +115,8 @@ export class PostProcessingManager {
     if (config.vignette) {
       this.vignettePass = new ShaderPass(VignetteShader);
       this.vignettePass.uniforms['offset'].value = config.vignette.offset;
-      this.vignettePass.uniforms['darkness'].value = config.vignette.darkness;
+      this._vignetteBase = config.vignette.darkness;
+      this.vignettePass.uniforms['darkness'].value = this._vignetteBase;
       this.composer.addPass(this.vignettePass);
     }
 
@@ -106,6 +124,29 @@ export class PostProcessingManager {
     const { OutputPass } = await import('three/examples/jsm/postprocessing/OutputPass.js');
     this.outputPass = new OutputPass();
     this.composer.addPass(this.outputPass);
+  }
+
+  /**
+   * Darken the vignette by `amount` on top of the resting value, then let it
+   * fall back. Repeated hits stack rather than restart, so a near-miss during
+   * an existing pulse still reads, but the total is clamped so a burst of
+   * events cannot black out the corners.
+   */
+  pulseVignette(amount: number): void {
+    if (!this.vignettePass) return;
+    this._vignettePulse = Math.min(this._vignettePulse + amount, 0.45);
+  }
+
+  /** Advance time-based effects. Safe to call when post-processing is disabled. */
+  update(delta: number): void {
+    if (!this.vignettePass || this._vignettePulse <= 0) return;
+
+    this._vignettePulse = Math.max(
+      0,
+      this._vignettePulse - delta / PostProcessingManager.PULSE_DECAY
+    );
+    this.vignettePass.uniforms['darkness'].value =
+      this._vignetteBase + this._vignettePulse;
   }
 
   render(): void {
@@ -128,6 +169,14 @@ export class PostProcessingManager {
       this.composer.dispose();
       this.composer = null;
     }
+    // Drop the pass refs too, so a tier downgrade that disposes the composer
+    // also stops update() writing uniforms into passes nothing renders.
+    this.renderPass = null;
+    this.bloomPass = null;
+    this.fxaaPass = null;
+    this.vignettePass = null;
+    this.outputPass = null;
+    this._vignettePulse = 0;
   }
 
   isEnabled(): boolean {
