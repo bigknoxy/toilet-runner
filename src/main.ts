@@ -281,7 +281,12 @@ class ToiletRunner {
       // which is why a fast phone looked flatter than a slow laptop.
       bloomResolutionScale: isHigh ? 1 : 0.5,
       fxaa: true,
-      vignette: isHigh ? { offset: 0.5, darkness: 0.3 } : undefined
+      // Resting darkness is deliberately low. At 0.3 the corners were dark
+      // enough to hide an obstacle that had only just entered the frustum,
+      // which costs reaction time on the exact geometry the player needs
+      // earliest warning about. The effect earns its keep by pulsing on
+      // impacts and dodges instead of sitting on every frame.
+      vignette: isHigh ? { offset: 0.5, darkness: 0.1 } : undefined
     });
 
     this.sceneManager.setPostProcessing(this.postProcessing);
@@ -423,6 +428,10 @@ class ToiletRunner {
       PerformanceManager.suspendAdaptation();
     }
 
+    // Decays the vignette pulse. Runs in every state so a pulse fired just
+    // before a pause does not stay frozen on screen behind the menu.
+    this.postProcessing.update(delta);
+
     if (this.currentGameState === GameState.PLAYING) {
       // Death slow-motion sequence
       if (this._isDying) {
@@ -518,6 +527,9 @@ class ToiletRunner {
             this.sparkleParticles.emitSparkle(this._dodgePosition);
             this.coinParticles.emitCoin(this._dodgePosition);
             this.cameraShake.shake(0.03, 0.1);
+            // Small tunnel-in on a clean dodge. Paired with the shake it reads
+            // as the near-miss registering rather than as a fixed border.
+            this.postProcessing.pulseVignette(0.08);
           }
         }
       }
@@ -644,6 +656,9 @@ class ToiletRunner {
 
   private handleCollision(hitPos: { x: number; y: number; z: number; lane: number }): void {
     this._handleHitEffects(hitPos, { shakeIntensity: 0.3, shakeDuration: 0.4 });
+    // Hardest punctuation the effect gets: a hit closes the frame in, then it
+    // opens back up over PULSE_DECAY.
+    this.postProcessing.pulseVignette(0.3);
     const obstaclePos = new THREE.Vector3(hitPos.x, hitPos.y, hitPos.z);
     for (let i = 0; i < 8; i++) {
       this.impactParticles.emitImpact(obstaclePos);
