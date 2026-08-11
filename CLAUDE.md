@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Summary
 
-Toilet Runner is a 3D endless runner game where a toilet paper roll dodges poop obstacles on a three-lane track. Built with Three.js + TypeScript + Vite, deployed as a static site to GitHub Pages.
+Toilet Runner is a 3D endless runner game where a toilet paper roll dodges poop obstacles on a three-lane track. Built with Three.js + TypeScript + Vite, deployed as a static PWA to GitHub Pages.
 
 ## Commands
 
@@ -19,6 +19,9 @@ bun run deploy         # Deploy dist/ to GitHub Pages via gh-pages
 ```
 
 There is no linter or formatter configured. TypeScript strict mode is enforced via `tsconfig.json`.
+
+**Port 5173 is mandatory** — `strictPort: true` in `vite.config.ts` and firewall rules for mobile LAN
+testing depend on it. The dev server binds `0.0.0.0`.
 
 Unit tests live in `tests/` and run on Bun's built-in runner. `bunfig.toml` preloads
 `tests/setup.ts`, which registers happy-dom so `window`, `document`, and
@@ -38,13 +41,13 @@ cap (`UIManager`), and scene detach on dispose (`SpeedLines`).
 
 ## Versioning
 
-Version lives in `package.json`. Releases use git tags. To cut a release:
+Version lives in `package.json` and is injected into the bundle as the `__APP_VERSION__` global via `vite.config.ts` `define` — the UI displays it, so a bump changes visible output. To cut a release:
 
-1. Update `version` in `package.json` to match the new tag (e.g. `"1.1.0"`)
-2. Commit the version bump
-3. `git tag v1.1.0 && git push origin v1.1.0`
+1. Update `version` in `package.json`
+2. Commit the bump
+3. `git tag v1.13.1 && git push origin v1.13.1`
 
-The release workflow enforces that the tag and `package.json` version stay in sync. GitHub Releases serves as the changelog — no separate changelog file.
+The release workflow enforces that the tag and `package.json` version stay in sync — it fails if they differ. GitHub Releases serves as the changelog, no changelog file.
 
 ## Architecture
 
@@ -54,38 +57,52 @@ The world moves toward the player (+Z direction), not the player through the wor
 
 ### Game State Machine
 
-States: `MENU → PLAYING → PAUSED | GAMEOVER → LEADERBOARD | MENU`. Additional menu states: `SKINS`, `CHALLENGES`, `STATS`. State transitions are managed by `ScreenManager` with a stack-based navigation model.
+`GameState` (`src/core/GameState.ts`): `MENU, PLAYING, PAUSED, GAMEOVER, LEADERBOARD, SKINS, CHALLENGES, STATS, SHOP`. `ScreenManager` owns transitions with a stack-based navigation model.
 
 ### Source Layout
 
-- `src/main.ts` — Entry point. `ToiletRunner` class wires all systems together.
-- `src/core/` — Engine-level systems: `GameLoop` (frame-rate independent with capped delta), `SceneManager` (Three.js renderer/scene/camera), `GameState` enum, `PerformanceManager` (detects LOW/MEDIUM/HIGH tier), `LeaderboardManager`, `StatsManager`.
-- `src/game/` — Gameplay: `RunnerController` (3-lane movement with lerp), `TrackManager` (infinite InstancedMesh segments), `ObstacleManager` (pooled InstancedMesh obstacles), `CollisionSystem` (AABB via Box3), `DifficultyManager`, `AudioManager` (Web Audio synthesis, no audio files), `CameraManager`, `DailyChallenges`, `CharacterCustomization`.
-- `src/game/visual/` — Effects: `ParticleSystem` (dust/sparkle/impact/coin), `PostProcessingManager` (bloom/FXAA/vignette), `MaterialFactory`, `EmojiTextureAtlas`.
-- `src/input/InputManager.ts` — Keyboard (arrows/WASD) + touch swipe (50px threshold).
-- `src/ui/` — HUD, ScoreAnimator, ScreenManager, UIManager, AudioControls.
+- `src/main.ts` — Entry point. The `ToiletRunner` class constructs and wires every system; it is the single integration point, so new subsystems get instantiated, updated, and reset here. Also registers the service worker (`public/sw.js`).
+- `src/core/` — Engine-level: `GameLoop` (frame-rate independent, delta capped at 0.1s), `SceneManager`, `GameState`, `GameConfig`, `PerformanceManager` (LOW/MEDIUM/HIGH tier detection), `LeaderboardManager`, `StatsManager`, `AnalyticsManager`.
+- `src/game/` — Gameplay: `RunnerController` (3-lane lerp movement + jump), `TrackManager`, `ObstacleManager` (pooled `THREE.Group`s, see below) with `ObstacleTypes` / `ObstacleGeometryFactory` / `ObstaclePattern` / `PatternSequencer`, `CollisionSystem` (AABB via `Box3`), `DifficultyManager`, `PowerUpManager`, `ShopManager`, `CharacterCustomization`, `DailyChallenges`, `AudioManager` (Web Audio synthesis, no audio files), `CameraManager`, `CameraShake`, `EnvironmentManager`, `TrailRenderer`.
+- `src/game/visual/` — `ParticleSystem`, `PostProcessingManager` (bloom/FXAA/vignette), `MaterialFactory`, `SpeedLines`, `EmojiTextureAtlas`.
+- `src/config/JumpConfig.ts` — jump tuning, separate from `GameConfig`.
+- `src/input/InputManager.ts` — keyboard (arrows/WASD) + touch swipe.
+- `src/ui/` — `HUD`, `ScoreAnimator`, `ScreenManager`, `UIManager`, `AudioControls`, `InstallPrompt`.
+- `public/` — PWA assets: `manifest.json`, hand-written `sw.js`, icons, `privacy-policy.html`.
 
-### Key Constants (in `GameConfig.ts`)
+### Key Constants
 
-Lane width: 3 units. Base speed: 10. Lerp speed: 8. Visible segments: 8. Max obstacles: 50.
+`GameConfig.ts`: lane width 3 units, base speed 10, visible segments 8, max obstacles 50, `maxObstaclesPerPattern` 2.
+
+Constants that live in their own modules, not in `GameConfig` — read the source, these move:
+- `SWIPE_THRESHOLD = 30`, `SWIPE_VERTICAL_THRESHOLD = 25` in `src/input/InputManager.ts`
+- Jump tuning in `src/config/JumpConfig.ts`
+- Tilt lerp (`TILT_LERP_SPEED`) in `src/game/RunnerController.ts`
 
 ### Performance Design
 
-- **InstancedMesh** for all obstacles and track segments (target <10 draw calls, <10K triangles)
-- **Object pooling** for obstacles — no per-frame allocations in hot loops
-- **Performance tiers** (LOW/MEDIUM/HIGH) auto-detected; controls particle counts, post-processing, pixel ratio
-- **MeshLambertMaterial** everywhere (no PBR)
-- **Fog** hides pop-in of distant geometry
+- **Object pooling** for obstacles — `ObstacleManager` keeps a pool of 50, all added to the scene at construction
+- **InstancedMesh** in `TrackManager` for track segments and lane lines. Note `instancedMesh.visible = false` (`TrackManager.ts:275`) — a floor plane replaced the instanced segments visually, but their matrices are still updated every frame.
+- **Obstacles are NOT instanced**, despite older docs claiming so: `createObstacleGroup` (`ObstacleManager.ts`) builds a `THREE.Group` of 4-6 individual `Mesh` objects (base/mid/tip + emoji plane or eyes+smile). Real draw calls are well above the aspirational "<10" target. Converting these to `InstancedMesh` is open work, not a done thing.
+- No per-frame allocations in hot loops (aspirational — `CollisionSystem` and `ParticleSystem` currently violate it)
+- **Performance tiers** auto-detected via a GPU-synced startup benchmark; controls particle counts, post-processing, pixel ratio. No user-agent sniffing
+- **Adaptive quality** (`src/core/AdaptiveQuality.ts`) watches delivered frame times during play and changes tier mid-run when the device throttles
+- **MeshLambertMaterial** everywhere (no PBR); fog hides distant pop-in
 
 ### Data Persistence
 
-All data in `localStorage` under `toiletRunner_unifiedData` (version 2). Stores player stats, scores, unlocked skins. Legacy keys are auto-migrated.
+`StatsManager` owns `toiletRunner_unifiedData` (player stats, scores, unlocked skins) and migrates the legacy `toiletRunner_stats` / `toiletRunner_gameData` keys into it.
+
+It is **not** a single unified store despite the name. These keys are also live and independent: `toiletRunner_coins` and `toiletRunner_challenges` (`DailyChallenges`), `toiletRunner_shop` (`ShopManager`), `toiletRunner_powerups`, `toiletRunner_analytics`, `toiletRunner_session`.
+
+`StatsManager` writes `version: StatsManager.CURRENT_VERSION` (2) but never branches on it when loading — there is no migration path for a future schema change, and a partial blob yields `undefined` fields. Treat the version field as aspirational.
 
 ## Code Style
 
 - 2-space indentation, ESM imports only, `const` by default
 - PascalCase classes, camelCase methods, UPPER_SNAKE_CASE constants, `_prefix` private members
 - Reuse `THREE.Vector3`/`THREE.Box3` in update loops — never allocate in hot paths
+- Dispose geometries/materials when removing objects from the scene
 - Explicit TypeScript types, no `any`
 
 ## Workflow
@@ -94,31 +111,32 @@ After completing any fix or feature change, always start the dev server (`bun ru
 
 ## Skill Routing
 
-When the user's request matches an available skill, ALWAYS invoke it using the Skill tool as your FIRST action. Do NOT answer directly, do NOT use other tools first. The skill has specialized workflows that produce better results than ad-hoc answers.
+When the user's request matches an available skill, ALWAYS invoke it using the Skill tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
 
 Key routing rules:
-- Ship, deploy, push, create PR → invoke /ship
-- QA, test the site, find bugs → invoke /qa
-- Code review, check my diff → invoke /review
-- Release verification (before deploy) → invoke /release-verification (see .opencode/skills/release-verification/)
-- Bugs, errors, "why is this broken" → invoke /investigate
+- Ship, deploy, push, create PR → `/ship`
+- QA, test the site, find bugs → `/qa`
+- Code review, check my diff → `/review`
+- Bugs, errors, "why is this broken" → `/investigate`
+
+Repo-local skills live in `.opencode/skills/` (e.g. `release-verification`, `threejs-instanced-mesh`, `object-pool-pattern`, `endless-runner-track-segments`, `performance-profiling-mobile`) — consult them before reinventing these patterns.
 
 ### Pre-Release Verification (CRITICAL)
 
 **NEVER release to production without verification using /qa and /browse skills.**
 
-Before every release:
 1. Run /qa on production URL (https://bigknoxy.github.io/toilet-runner/)
 2. Run /browse to verify interactive functionality
 3. Verify existing features still work (no regressions)
 4. Verify new features work as expected
 5. Only proceed if verification passes
 
-See AGENTS.md "Deployment Workflow" section for full details.
+See AGENTS.md "Deployment Workflow" for full details.
 
 ## Common Pitfalls
 
 - Vite `base: './'` is required for GitHub Pages asset paths — do not change it
+- `vite-plugin-pwa` is a devDependency but is **not** wired into `vite.config.ts`; the service worker in `public/sw.js` is hand-written and cache versions must be bumped there manually
 - Delta time is capped at 0.1s in `GameLoop` to prevent physics explosions on tab-switch
 - Audio is fully synthesized via Web Audio API — there are no audio files to manage
-- The `PerformanceManager` runs a quick WebGL benchmark on startup; features degrade gracefully per tier
+- `dist/` is gitignored, but `dist/index.html` is tracked from before the ignore rule — leave it alone, never hand-edit build output
