@@ -79,8 +79,10 @@ A humorous 3D endless runner where a toilet paper roll runs forward, avoiding pi
 
 ## Performance Optimizations
 
+- **Measured quality tier:** A GPU-synced boot benchmark grades the device and picks LOW/MEDIUM/HIGH. No user-agent sniffing — a fast phone gets the same effects a fast laptop does.
+- **Adaptive quality:** `AdaptiveQuality` watches delivered frame times during play and drops a tier after 3s below 45 FPS, climbing back after 8s above 58 FPS (5s cooldown between changes). Thermal throttling and background tabs get corrected mid-run.
 - **InstancedMesh:** 1 draw call for 50+ obstacles
-- **Pixel ratio:** Clamped to 2x on mobile
+- **Pixel ratio:** Clamped to 2x, tier-selected
 - **Object pooling:** Reduce GC pressure
 - **Fog:** Hide distant geometry
 - **Simple materials:** MeshLambertMaterial (not PBR)

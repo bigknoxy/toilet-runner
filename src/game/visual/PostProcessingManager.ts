@@ -11,6 +11,13 @@ interface PostProcessingConfig {
   bloom?: { strength: number; threshold: number; radius: number };
   fxaa?: boolean;
   vignette?: { offset: number; darkness: number };
+  /**
+   * Multiplier on the bloom render target size. Bloom is the most fill-rate
+   * hungry pass here, so weaker devices render it at half size and let the
+   * upscale hide it. Previously decided by sniffing the user agent, which meant
+   * every phone got the cheap path no matter how fast it was.
+   */
+  bloomResolutionScale?: number;
 }
 
 export class PostProcessingManager {
@@ -35,7 +42,10 @@ export class PostProcessingManager {
     } = await import('three/examples/jsm/postprocessing/EffectComposer.js');
 
     this.composer = new Composer(this.renderer);
-    this.composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Match the renderer rather than always maxing out: the tier already
+    // decided how many pixels this device should be asked to fill, and the
+    // composer running hotter than the renderer wastes exactly that saving.
+    this.composer.setPixelRatio(this.renderer.getPixelRatio());
 
     const {
       RenderPass
@@ -49,10 +59,10 @@ export class PostProcessingManager {
         'three/examples/jsm/postprocessing/UnrealBloomPass.js'
       );
 
-      const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+      const scale = config.bloomResolutionScale ?? 1;
       const bloomResolution = new THREE.Vector2(
-        isMobile ? window.innerWidth * 0.5 : window.innerWidth,
-        isMobile ? window.innerHeight * 0.5 : window.innerHeight
+        window.innerWidth * scale,
+        window.innerHeight * scale
       );
 
       this.bloomPass = new UnrealBloomPass(
@@ -81,8 +91,11 @@ export class PostProcessingManager {
       this.composer.addPass(this.fxaaPass);
     }
 
-    // Add vignette effect (desktop only for performance)
-    if (config.vignette && !this.isMobile()) {
+    // Whether to run the vignette is the caller's decision, made from the
+    // performance tier. It used to be gated on a user-agent test, so a capable
+    // phone lost the effect purely for being a phone while the same GPU class
+    // in a laptop kept it.
+    if (config.vignette) {
       this.vignettePass = new ShaderPass(VignetteShader);
       this.vignettePass.uniforms['offset'].value = config.vignette.offset;
       this.vignettePass.uniforms['darkness'].value = config.vignette.darkness;
@@ -121,9 +134,6 @@ export class PostProcessingManager {
     return this.composer !== null;
   }
 
-  private isMobile(): boolean {
-    return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }
 }
 
 // Vignette shader for post-processing effect

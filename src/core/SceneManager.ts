@@ -126,6 +126,15 @@ export class SceneManager {
     return this.renderer;
   }
 
+  /**
+   * The constructor has to pick a pixel ratio before the performance tier is
+   * known, so it uses the device maximum. This re-applies the tier's choice once
+   * PerformanceManager has decided, and again on any later tier change.
+   */
+  public setPixelRatio(ratio: number): void {
+    this.renderer.setPixelRatio(Math.min(ratio, PIXEL_RATIO_MAX));
+  }
+
   public resize(width: number, height: number): void {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
