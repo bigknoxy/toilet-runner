@@ -22,6 +22,19 @@ const BARRIER_HALF_WIDTH = 1.2;
 const BARRIER_HALF_DEPTH = 0.35;
 const POOP_CENTER_Y = 0.3;
 
+// Emissive terms are added to the lit color before the fog mix runs, so they
+// widen the obstacle's contrast against the horizon for the whole approach
+// instead of just fighting fog at close range (fog still wins at the spawn
+// plane, which is the point — distant pop-in should stay hidden). BARRIER_HIGH
+// gets the strongest glow of the three: it is the one obstacle type the player
+// cannot recover from by jumping, so it needs to read as "different" before a
+// poop pile would, not just brighter.
+const POOP_EMISSIVE = 0x3D2210;
+const POOP_EMISSIVE_INTENSITY = 0.45;
+const BARRIER_EMISSIVE = 0x8C1F12;
+const BARRIER_EMISSIVE_INTENSITY = 0.55;
+const BARRIER_STRIPE_EMISSIVE_INTENSITY = 0.35;
+
 export interface ActiveObstacle {
   x: number;
   y: number;
@@ -100,7 +113,11 @@ export class ObstacleManager {
     }
 
     // Materials
-    this._bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x8B5E3C });
+    this._bodyMaterial = new THREE.MeshLambertMaterial({
+      color: 0x8B5E3C,
+      emissive: POOP_EMISSIVE,
+      emissiveIntensity: POOP_EMISSIVE_INTENSITY
+    });
     this._bodyMaterial.side = THREE.FrontSide;
     this._eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
     this._eyeMaterial.side = THREE.FrontSide;
@@ -121,13 +138,21 @@ export class ObstacleManager {
       BARRIER_HALF_HEIGHT * 2,
       BARRIER_HALF_DEPTH * 2
     );
-    this._barrierMaterial = new THREE.MeshLambertMaterial({ color: 0xC23B22 });
+    this._barrierMaterial = new THREE.MeshLambertMaterial({
+      color: 0xC23B22,
+      emissive: BARRIER_EMISSIVE,
+      emissiveIntensity: BARRIER_EMISSIVE_INTENSITY
+    });
     this._barrierStripeGeometry = new THREE.BoxGeometry(
       BARRIER_HALF_WIDTH * 2.05,
       0.3,
       BARRIER_HALF_DEPTH * 2.05
     );
-    this._barrierStripeMaterial = new THREE.MeshLambertMaterial({ color: 0xF2E8C9 });
+    this._barrierStripeMaterial = new THREE.MeshLambertMaterial({
+      color: 0xF2E8C9,
+      emissive: 0xF2E8C9,
+      emissiveIntensity: BARRIER_STRIPE_EMISSIVE_INTENSITY
+    });
 
     // Initialize pool
     this.initializeObstaclePool();
