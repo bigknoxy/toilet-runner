@@ -53,7 +53,8 @@ graph TD
   subgraph Game["src/game — gameplay"]
     RC[RunnerController<br/>3 lanes, lerp]
     TM[TrackManager<br/>InstancedMesh segments]
-    OM[ObstacleManager<br/>pooled InstancedMesh]
+    OM[ObstacleManager<br/>pooled THREE.Group]
+    COIN[CoinManager<br/>pooled InstancedMesh]
     CS[CollisionSystem<br/>AABB / Box3]
     DM[DifficultyManager]
     PS[PatternSequencer]
@@ -90,6 +91,8 @@ graph TD
   M --> SCR --> UIM
   M --> HUD
   M --> SV --> UIM
+  OM --> COIN
+  COIN --> SH
   OM --> PART
   OM --> ETA & MF
   M --> SL
@@ -247,7 +250,7 @@ for headroom. A downgrade tears down post-processing; an upgrade does not rebuil
 recompiling shaders would stall exactly the frames the upgrade was meant to reward.
 </p>
 <ul>
-  <li><strong>InstancedMesh</strong> for track segments and obstacles — target &lt;10 draw calls, &lt;10K triangles.</li>
+  <li><strong>InstancedMesh</strong> for track segments, lane lines, and coins. Obstacles are pooled <code>THREE.Group</code>s of 4-6 meshes, not instanced, so the &lt;10 draw call target is aspirational.</li>
   <li><strong>Object pooling</strong> for obstacles; no per-frame allocations in hot loops. Reuse
       <code>THREE.Vector3</code>/<code>Box3</code> instances in <code>update()</code>.</li>
   <li><strong>MeshLambertMaterial</strong> everywhere, no PBR.</li>
@@ -330,7 +333,7 @@ Vite is configured with <code>base: './'</code> — required for GitHub Pages as
 </table>
 
 <footer>
-  Last updated 2026-08-11 · <a href="../README.md">README</a> ·
+  Last updated 2026-08-12 · <a href="../README.md">README</a> ·
   <a href="https://bigknoxy.github.io/toilet-runner/">Play</a>
 </footer>
 

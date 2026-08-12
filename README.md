@@ -58,6 +58,9 @@ A humorous 3D endless runner where a toilet paper roll runs forward, avoiding pi
 - **Obstacles:** pooled piles of poop (jump or dodge) plus `BARRIER_HIGH` walls that are taller
   than the jump apex, so they can only be dodged by changing lane. See
   [Obstacle types](docs/architecture.html) for hitbox dimensions.
+- **Coins:** gold pickups spawn between the obstacles, one `InstancedMesh` for the whole pool.
+  The shop's coin magnet widens the pickup radius. Coins are also awarded for near-misses and
+  close passes.
 - **Performance:** Target 55-60 FPS on mobile devices
 
 ## Architecture
@@ -70,7 +73,9 @@ A humorous 3D endless runner where a toilet paper roll runs forward, avoiding pi
 ### Game Systems
 - **RunnerController:** Lane-based movement with smooth lerp interpolation
 - **TrackManager:** Endless segments spawning/despawning
-- **ObstacleManager:** InstancedMesh obstacles with spawn patterns
+- **ObstacleManager:** pooled `THREE.Group` obstacles with spawn patterns (not instanced — each
+  is 4-6 meshes)
+- **CoinManager:** pooled collectible coins, one `InstancedMesh`, live prefix only
 - **CollisionSystem:** AABB collision using THREE.Box3
 
 ### Input & UI
@@ -81,12 +86,14 @@ A humorous 3D endless runner where a toilet paper roll runs forward, avoiding pi
 
 - **Measured quality tier:** A GPU-synced boot benchmark grades the device and picks LOW/MEDIUM/HIGH. No user-agent sniffing — a fast phone gets the same effects a fast laptop does.
 - **Adaptive quality:** `AdaptiveQuality` watches delivered frame times during play and drops a tier after 3s below 45 FPS, climbing back after 8s above 58 FPS (5s cooldown between changes). Thermal throttling and background tabs get corrected mid-run.
-- **InstancedMesh:** 1 draw call for 50+ obstacles
+- **InstancedMesh:** track segments, lane lines, and coins each render in 1 draw call. Obstacles
+  are *not* instanced — they are groups of 4-6 meshes, so real obstacle draw calls scale with the
+  number on screen. Converting them is open work.
 - **Pixel ratio:** Clamped to 2x, tier-selected
 - **Object pooling:** Reduce GC pressure
 - **Fog:** Hide distant geometry
 - **Simple materials:** MeshLambertMaterial (not PBR)
-- **Draw calls:** <10 total
+- **Draw calls:** <10 total (aspirational — obstacles blow past this today)
 - **Triangles:** <10,000
 
 ## CI / CD
