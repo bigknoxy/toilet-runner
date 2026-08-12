@@ -163,6 +163,31 @@ export class AudioManager {
     osc.stop(this._context.currentTime + 0.12);
   }
 
+  /**
+   * Coin pickup. Two short square blips a fifth apart — the classic
+   * collectible ding, kept quiet and 90ms long because a coin run fires this
+   * several times a second and anything longer smears into a drone.
+   */
+  playCoinPickup(): void {
+    this.ensureContext();
+    if (!this._context) return;
+
+    const start = this._context.currentTime;
+    const gain = this._context.createGain();
+    gain.gain.setValueAtTime(0.12, start);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.09);
+    gain.connect(this._masterGain!);
+
+    const osc = this._context.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(988, start);
+    osc.frequency.setValueAtTime(1319, start + 0.04);
+    osc.connect(gain);
+
+    osc.start(start);
+    osc.stop(start + 0.09);
+  }
+
   playGameOver(): void {
     this.ensureContext();
     if (!this._context) return;

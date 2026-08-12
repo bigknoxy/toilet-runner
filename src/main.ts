@@ -9,6 +9,8 @@ import { PerformanceManager, PerformanceTier, PerformanceConfig } from './core/P
 import { RunnerController } from './game/RunnerController';
 import { TrackManager } from './game/TrackManager';
 import { ObstacleManager } from './game/ObstacleManager';
+import type { ActiveObstacle } from './game/ObstacleManager';
+import { CoinManager } from './game/CoinManager';
 import { CollisionSystem } from './game/CollisionSystem';
 import { AudioManager } from './game/AudioManager';
 import { EnvironmentManager } from './game/EnvironmentManager';
@@ -58,6 +60,13 @@ const SAME_LANE_THRESHOLD = 0.5;
 const NEAR_MISS_BONUS = 10;
 const CLOSE_PASS_BONUS = 5;
 const NEAR_MISS_COIN_REWARD = 5;
+
+/**
+ * Reused for the death slow-mo, where coins keep drifting for the look of it
+ * but nothing new spawns. A shared empty array keeps the hot loop allocation
+ * free.
+ */
+const NO_OBSTACLES: ActiveObstacle[] = [];
 const CLOSE_PASS_COIN_REWARD = 2;
 
 class ToiletRunner {
@@ -68,6 +77,7 @@ class ToiletRunner {
   private runner!: RunnerController;
   private track!: TrackManager;
   private obstacles!: ObstacleManager;
+  private coins!: CoinManager;
   private collision!: CollisionSystem;
   private audioManager!: AudioManager;
   private environment!: EnvironmentManager;
@@ -349,6 +359,7 @@ class ToiletRunner {
     );
     this.track = new TrackManager(scene);
     this.obstacles = new ObstacleManager(scene, this.track, this.performanceConfig.emojiFaces);
+    this.coins = new CoinManager(scene);
     this.collision = new CollisionSystem();
     this.audioManager = new AudioManager();
     this.environment = new EnvironmentManager(scene);
@@ -450,6 +461,7 @@ class ToiletRunner {
         this.sparkleParticles.update(slowDelta);
         this.impactParticles.update(slowDelta);
         this.coinParticles.update(slowDelta);
+        this.coins.update(slowDelta, gameSpeed, this.score, this.track.getFrontZ(), NO_OBSTACLES);
         this.cameraShake.update(slowDelta);
         this.sceneManager.render();
         return;
@@ -480,6 +492,19 @@ class ToiletRunner {
       // Check for successful dodges and trigger celebration effects
       const activeObstacles = this.obstacles.getActiveObstacles();
       const playerPos = this.runner.getPosition();
+
+      // Coins spawn around the obstacles rather than through them, so this runs
+      // after the obstacle update and reads the same active list.
+      this.coins.update(delta, gameSpeed, this.score, this.track.getFrontZ(), activeObstacles);
+
+      const magnetBonus = this.shopManager.getCoinMagnetBonus();
+      const pickedUp = this.coins.collect(playerPos.x, playerPos.z, playerPos.y, magnetBonus);
+      if (pickedUp > 0) {
+        this.dailyChallenges.updateCoinBalance(pickedUp);
+        this.ui.showScorePopup(`+${pickedUp} Coins!`, false);
+        this.triggerCoinPickup(playerPos);
+        this.audioManager.playCoinPickup();
+      }
 
       for (const obstacle of activeObstacles) {
         // Keyed on spawnId, not position — z advances every frame, so a
@@ -947,6 +972,7 @@ class ToiletRunner {
     this.runner.reset();
     this.track.reset();
     this.obstacles.reset();
+    this.coins.reset();
     this.collision.reset();
     this.environment.reset();
     this.cameraManager.reset();
